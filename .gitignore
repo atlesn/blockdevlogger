@@ -1,6 +1,9 @@
 # http://www.gnu.org/software/automake
 
+Makefile
 Makefile.in
+*.o
+*.so
 
 # http://www.gnu.org/software/autoconf
 
