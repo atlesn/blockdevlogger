@@ -23,12 +23,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include "cmdline.h"
+#include "defaults.h"
 
-#define BDL_DBG_CMDLINE
+//#define BDL_DBG_CMDLINE
 
 const char *command_help = "help";
+
+#define BDL_ARGUMENT_MAX BDL_MAXIMUM_CMDLINE_ARGS
+#define BDL_ARGUMENT_SIZE BDL_MAXIMUM_CMDLINE_ARG_SIZE
 
 const char *program = NULL;
 const char *command = NULL;
@@ -41,13 +46,16 @@ struct arg_pair {
 	char value[BDL_ARGUMENT_SIZE];
 	long int value_int;
 	unsigned char value_hex;
+	uint64_t value_hex_64;
 	int integer_is_converted;
 	int hex_is_converted;
+	int hex64_is_converted;
 };
 
 struct arg_pair arg_pairs[BDL_ARGUMENT_MAX];
 
 void cmd_init() {
+	command = NULL;
 	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
 		args[i] = NULL;
 		arg_pairs[i].key[0] = '\0';
@@ -56,6 +64,7 @@ void cmd_init() {
 		arg_pairs[i].value_hex = 0x00;
 		arg_pairs[i].integer_is_converted = 0;
 		arg_pairs[i].hex_is_converted = 0;
+		arg_pairs[i].hex64_is_converted = 0;
 		args_used[i] = 0;
 	}
 }
@@ -81,7 +90,7 @@ int cmd_get_value_index(const char *key) {
 	return -1;
 }
 
-int cmd_convert_hex_16(const char *key) {
+int cmd_convert_hex_byte(const char *key) {
 	int index = cmd_get_value_index(key);
 	if (index == -1) {
 		return 1;
@@ -110,6 +119,34 @@ int cmd_convert_hex_16(const char *key) {
 	return 0;
 }
 
+int cmd_convert_hex_64(const char *key) {
+	int index = cmd_get_value_index(key);
+	if (index == -1) {
+		return 1;
+	}
+
+	if (arg_pairs[index].hex64_is_converted) {
+		return 0;
+	}
+
+	char *err;
+	uint64_t intermediate = strtoull(arg_pairs[index].value, &err, 16);
+
+	if (err[0] != '\0') {
+		return 1;
+	}
+
+	arg_pairs[index].value_hex_64 = intermediate;
+	arg_pairs[index].hex64_is_converted = 1;
+
+	#ifdef BDL_DBG_CMDLINE
+
+	printf ("Converted argument with key '%s' to hex64 '%" PRIx64 "'\n", key, arg_pairs[index].value_hex_64);
+
+	#endif
+
+	return 0;
+}
 int cmd_convert_integer_10(const char *key) {
 	int index = cmd_get_value_index(key);
 	if (index == -1) {
@@ -138,7 +175,7 @@ int cmd_convert_integer_10(const char *key) {
 	return 0;
 }
 
-char cmd_get_hex(const char *key) {
+char cmd_get_hex_byte(const char *key) {
 	int index = cmd_get_value_index(key);
 
 	if (index == -1) {
@@ -156,6 +193,26 @@ char cmd_get_hex(const char *key) {
 	args_used[index] = 1;
 
 	return arg_pairs[index].value_hex;
+}
+
+uint64_t cmd_get_hex_64(const char *key) {
+	int index = cmd_get_value_index(key);
+
+	if (index == -1) {
+		fprintf(stderr, "Bug: Called cmd_get_hex_64 with unknown key '%s'\n", key);
+		exit (EXIT_FAILURE);
+	}
+
+	#ifdef BDL_DBG_CMDLINE
+	if (arg_pairs[index].hex64_is_converted != 1) {
+		fprintf(stderr, "Bug: Called cmd_get_hex_64 without cmd_convert_hex_64 being called first\n");
+		exit (EXIT_FAILURE);
+	}
+	#endif
+
+	args_used[index] = 1;
+
+	return arg_pairs[index].value_hex_64;
 }
 
 long int cmd_get_integer(const char *key) {
@@ -199,6 +256,17 @@ const char *cmd_get_argument(int index) {
 	}
 	args_used[index] = 1;
 	return args[index];
+}
+
+/* Get last argument after already read arg=val pairs */
+const char *cmd_get_last_argument() {
+	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
+		if (args_used[i] == 0 && args[i] != NULL && *args[i] != '\0') {
+			args_used[i] = 1;
+			return args[i];
+		}
+	}
+	return NULL;
 }
 
 int cmd_parse(int argc, const char *argv[]) {

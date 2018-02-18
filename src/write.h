@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef BDL_WRITE_H
 #define BDL_WRITE_H
 
-int write_put_data(const char *device, const char *data, int data_length);
+#include "io.h"
+
+int write_put_data(const char *device, struct io_file *file, const char *data, int data_length, uint64_t appdata);
 
 #endif

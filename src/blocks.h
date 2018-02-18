@@ -44,8 +44,8 @@ struct bdl_header {
 	/* Total size to write after the header before we wrap */
 	uint64_t total_size;
 
-	/* Future use? */
-	uint32_t padding;
+	/* Size of header including padding */
+	uint32_t header_size;
 
 	/* Hash of all parameters with hash being zero */
 	uint32_t hash;
@@ -81,8 +81,48 @@ struct bdl_header_pad {
 	uint8_t pad;
 };
 
-int block_validate(const char *all_data, const struct bdl_header *master_header, int *result);
-int block_get_master_header(struct io_file *file, struct bdl_header *header);
-int block_validate_hint (const struct bdl_hint_block *header_orig, const struct bdl_header *master_header, int *result);
+struct bdl_hintblock_state {
+	int valid;
+	int blockstart_min;
+	int blockstart_max;
+	int location;
+	uint64_t highest_timestamp;
+	struct bdl_hint_block hintblock;
+};
+
+struct bdl_block_location {
+	int block_location;
+	int hintblock_location;
+};
+
+struct bdl_hintblock_loop_callback_data {
+		// May be initialized before looping, not used by the loop
+		int argument_int;
+		void *argument_ptr;
+
+		// Initialized by the loop itself
+		struct io_file *file;
+		const struct bdl_header *master_header;
+		struct bdl_block_location *location;
+		struct bdl_hintblock_state *state;
+		int position;
+		int blockstart_min;
+		int blockstart_max;
+};
+
+#define BDL_HINTBLOCK_LOOP_OK		0
+#define BDL_HINTBLOCK_LOOP_ERR		1
+#define BDL_HINTBLOCK_LOOP_BREAK	2
+
+int block_loop_hintblocks_large_device(
+		struct io_file *file,
+		const struct bdl_header *header,
+		int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
+		struct bdl_hintblock_loop_callback_data *callback_data,
+		struct bdl_hintblock_state *hintblock_state,
+		struct bdl_block_location *location,
+		int *result
+);
+int block_get_master_header(struct io_file *file, struct bdl_header *header, int *result);
 
 #endif

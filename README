@@ -56,6 +56,6 @@ Initializes a device by writing a new header.
 	padchar	The character to use for padding blocks, defaults to 0xff.
 			Correct value relieves strain on some memory chips.
 
-bdl write {DEVICE} {DATA}
+bdl write dev={DEVICE} [appdata=APPLICATION DATA 64bit HEX] {DATA}
 
 Write a new data block.

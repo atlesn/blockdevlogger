@@ -22,17 +22,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef BDL_CMDLINE_H
 #define BDL_CMDLINE_H
 
-#define BDL_ARGUMENT_MAX 16
-#define BDL_ARGUMENT_SIZE 256
+#include <stdint.h>
 
 const char *cmd_get_value(const char *key);
 int cmd_parse(const int argc, const char *argv[]);
 int cmd_match(const char *test);
-int cmd_convert_hex_16(const char *key);
+int cmd_convert_hex_64(const char *key);
+int cmd_convert_hex_byte(const char *key);
 int cmd_convert_integer_10(const char *key);
-char cmd_get_hex(const char *key);
+char cmd_get_hex_byte(const char *key);
+uint64_t cmd_get_hex_64(const char *key);
 long int cmd_get_integer(const char *key);
 int cmd_check_all_args_used();
 const char *cmd_get_argument(int index);
+const char *cmd_get_last_argument();
 
 #endif

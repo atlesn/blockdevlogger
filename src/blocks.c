@@ -23,123 +23,172 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <errno.h>
 #include <string.h>
 #include <inttypes.h>
+#include <stdlib.h>
 
 #include "blocks.h"
 #include "defaults.h"
 #include "crypt.h"
 #include "io.h"
+#include "validate.h"
 
-int block_validate(const char *all_data, const struct bdl_header *master_header, int *result) {
-	struct bdl_block_header *header = (struct bdl_block_header *) all_data;
 
-	if (header->data_length > master_header->block_size - sizeof(header)) {
+int block_hintblock_get_last_block (
+		struct io_file *file,
+		const struct bdl_hintblock_state *state,
+		const struct bdl_header *master_header,
+		struct bdl_block_header *block,
+		int *result
+) {
+	char temp_block_data[master_header->block_size];
+	struct bdl_block_header *block_tmp = (struct bdl_block_header *) temp_block_data;
+
+	*result = 1;
+	if (io_read_block (file, state->hintblock.previous_block_pos, temp_block_data, master_header->block_size) != 0) {
+		fprintf (stderr, "Could not read block at %i\n", (int)state->hintblock.previous_block_pos);
 		return 1;
 	}
 
-	uint32_t hash_orig = header->hash;
-	header->hash = 0;
-
-	if (crypt_check_hash(
-			all_data,
-			sizeof(*header) + header->data_length,
-			master_header->default_hash_algorithm,
-			hash_orig,
-			result) != 0
-	) {
-		fprintf (stderr, "Error while checking hash for block\n");
-		return 1;
+	if (validate_block(temp_block_data, master_header, result) != 0) {
+		*result = 1;
+		return 0;
 	}
 
-	header->hash = hash_orig;
+	memcpy (block, temp_block_data, sizeof(*block));
 
 	return 0;
 }
 
-int block_validate_hint (const struct bdl_hint_block *header_orig, const struct bdl_header *master_header, int *result) {
-	struct bdl_hint_block header = *header_orig;
+int block_get_hintblock_state (
+		struct io_file *file,
+		int pos,
+		const struct bdl_header *master_header,
+		int blockstart_min,
+		int blockstart_max,
+		struct bdl_hintblock_state *state
+) {
+	state->valid = 0;
+	state->blockstart_min = blockstart_min;
+	state->blockstart_max = blockstart_max;
+	state->highest_timestamp = 0;
+	state->location = pos;
 
-	header.hash = 0;
-
-	if (crypt_check_hash(
-			(const char *) &header,
-			sizeof(header),
-			master_header->default_hash_algorithm,
-			header_orig->hash,
-			result) != 0
-	) {
-		fprintf (stderr, "Error while validating hash for hint block\n");
+	if (io_read_block (file, pos, (char *) &state->hintblock, sizeof(state->hintblock)) != 0) {
+		fprintf (stderr, "Error while reading hint block area at %i\n", pos);
 		return 1;
 	}
+
+	struct bdl_hint_block hintblock_copy = state->hintblock;
+	hintblock_copy.hash = 0;
+
+	int hash_return;
+	if (validate_hint (&hintblock_copy, master_header, &hash_return) != 0) {
+		fprintf (stderr, "Error while checking hash for hint block at %i\n", pos);
+		return 1;
+	}
+
+	if (state->hintblock.previous_block_pos > blockstart_max || state->hintblock.previous_block_pos < blockstart_min) {
+		state->valid = 0;
+		return 0;
+	}
+
+	state->valid = 1;
+
+	int block_result;
+	struct bdl_block_header block;
+	if (block_hintblock_get_last_block (file, state, master_header, &block, &block_result) != 0) {
+		fprintf (stderr, "Error while getting last block before hintblock\n");
+		return 1;
+	}
+
+	if (block_result != 0) {
+		state->valid = 0;
+		return 0;
+	}
+
+	state->highest_timestamp = block.timestamp;
+
+#ifdef BDL_DBG_WRITE
+		printf ("Highest timestamp of hint block was %" PRIu64 "\n", state->highest_timestamp);
+#endif
 
 	return 0;
 }
 
+int block_loop_hintblocks_large_device (
+		struct io_file *file,
+		const struct bdl_header *header,
+		int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
+		struct bdl_hintblock_loop_callback_data *callback_data,
+		struct bdl_hintblock_state *hintblock_state,
+		struct bdl_block_location *location,
+		int *result
+) {
+	location->block_location = 0;
+	location->hintblock_location = 0;
 
-int block_validate_header (const struct bdl_header *header, int file_size) {
-	struct bdl_header header_copy = *header;
-	header_copy.hash = 0; // Needs to be zero for hash to be valid
+	// Search for hint blocks
 
-	int result;
-	if (crypt_check_hash(
-			(const char *) &header_copy,
-			sizeof(header_copy),
-			header->default_hash_algorithm,
-			header->hash,
-			&result) != 0
-	) {
-		return 1;
+	callback_data->file = file;
+	callback_data->master_header = header;
+	callback_data->state = hintblock_state;
+	callback_data->location = location;
+
+	unsigned long int device_size = file->size;
+	int header_size = header->header_size;
+
+	int blockstart_min = header_size;
+
+	int loop_begin = header_size + BDL_DEFAULT_HINT_BLOCK_SPACING;
+	int loop_spacing = BDL_DEFAULT_HINT_BLOCK_SPACING;
+
+	for (int i = loop_begin; i < device_size; i += loop_spacing) {
+		int blockstart_max = i - header->block_size;
+
+		if (block_get_hintblock_state (
+				file, i, header,
+				blockstart_min,
+				blockstart_max,
+				hintblock_state
+				) != 0
+		) {
+			fprintf (stderr, "Error while reading hint block at %i while looping\n", i);
+			return 1;
+		}
+
+		callback_data->position = i;
+		callback_data->blockstart_min = blockstart_min;
+		callback_data->blockstart_max = blockstart_max;
+
+		if (callback(callback_data, result) != 0) {
+			fprintf (stderr, "Error in callback function for hint block loop\n");
+			return 1;
+		}
+
+		if (*result == BDL_HINTBLOCK_LOOP_BREAK) {
+			return 0;
+		}
+		else if (*result == BDL_HINTBLOCK_LOOP_ERR) {
+			return 1;
+		}
+
+		blockstart_min = i + header->block_size;
 	}
 
-	if (result != 0) {
-		fprintf (stderr, "Header checksum of device was not valid, possible data corruption. Please re-initialize device.\n");
-		return 1;
-	}
-
-	if (header->total_size < header->block_size * 2) {
-		fprintf (stderr, "The total size specified in the header was too small. Please re-initialize device.\n");
-		return 1;
-	}
-
-	if (header->total_size > file_size) {
-		fprintf (stderr, "The file size specified in the header is larger than the file size. Please re-initialize device.\n");
-		return 1;
-	}
-
-	if (header->total_size % header->block_size != 0) {
-		fprintf (stderr, "The header total size was not dividable by block size. Please re-initialize device.\n");
-		return 1;
-	}
-
-	if (header->version_major != BDL_CONFIG_VERSION_MAJOR || header->version_minor != BDL_CONFIG_VERSION_MINOR) {
-		fprintf (stderr, "Incompatible header version. Header has version is V%u.%u, and we require V%u.%u.",
-				header->version_major,
-				header->version_minor,
-				BDL_CONFIG_VERSION_MAJOR,
-				BDL_CONFIG_VERSION_MINOR
-		);
-		return 1;
-	}
-	else if (header->block_size < BDL_MINIMUM_BLOCKSIZE) {
-		fprintf (stderr, "The block size defined in the header was %" PRIu64 " but minimum size is %d\n", header->block_size, BDL_MINIMUM_BLOCKSIZE);
-		return 1;
-	}
-	else if (header->block_size > BDL_MAXIMUM_BLOCKSIZE) {
-		fprintf (stderr, "The block size defined in the header was %" PRIu64 " but maximum size is %d\n", header->block_size, BDL_MAXIMUM_BLOCKSIZE);
-		return 1;
-	}
-	else if (header->block_size % BDL_BLOCKSIZE_DIVISOR) {
-		fprintf (stderr, "The block size defined in the header (%" PRIu64 ") was not dividable with %d\n", header->block_size, BDL_BLOCKSIZE_DIVISOR);
-		return 1;
-	}
+	// TODO: Code for hint block at the very end
 
 	return 0;
 }
 
-int block_get_master_header(struct io_file *file, struct bdl_header *header) {
+int block_get_master_header(struct io_file *file, struct bdl_header *header, int *result) {
 	if (io_read_block(file, 0, (char *) header, sizeof(*header)) != 0) {
 		fprintf (stderr, "Error while reading header from file\n");
 		return 1;
 	}
 
-	return block_validate_header(header, file->size);
+	if (validate_header(header, file->size, result) != 0) {
+		fprintf (stderr, "Error while validating header\n");
+		return 1;
+	}
+
+	return 0;
 }

@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "crypt.h"
 #include "crc32.h"
 
-#define BDL_DEBUG_HASHING
+//#define BDL_DEBUG_HASHING
 
 const char *algorithm_names[] = BDL_HASH_ALGORITHM_NAMES;
 
@@ -67,7 +67,7 @@ int crypt_check_hash(const char *data, int length, BDL_HASH_ALGORITHM algorithm,
 	uint32_t test;
 
 	if (crypt_hash_data(data, length, algorithm, &test) != 0) {
-		fprintf (stderr, "Hashing of data failed while testing checksum");
+		fprintf (stderr, "Hashing of data failed while testing checksum\n");
 		return 1;
 	}
 

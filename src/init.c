@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "init.h"
 #include "defaults.h"
@@ -29,50 +30,59 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "crypt.h"
 #include "io.h"
 
-int check_blank_device (const char *device_path) {
-	FILE *device = fopen(device_path, "r");
-
-	if (device == NULL) {
-		fprintf (stderr, "Could not open device %s for reading: %s\n", device_path, strerror(errno));
-		return 1;
-	}
-
+int check_blank_device (struct io_file *file) {
 	int item_count = BDL_NEW_DEVICE_BLANK_START_SIZE / sizeof(int);
 	int buf[item_count];
-	size_t items = fread (buf, sizeof(buf[0]), item_count, device);
+	size_t items = fread (buf, sizeof(buf[0]), item_count, file->file);
 
 	if (items < item_count) {
-		if (feof(device)) {
-			fprintf (stderr, "Device %s was too small\n", device_path);
+		if (feof(file->file)) {
+			fprintf (stderr, "Device was too small\n");
 			goto error_close;
 		}
-		int error = ferror(device);
-		fprintf (stderr, "Error while reading from device %s: %s\n", device_path, strerror(error));
+		int error = ferror(file->file);
+		fprintf (stderr, "Error while reading from device: %s\n", strerror(error));
 		goto error_close;
 	}
 
 	for (int i = 0; i < item_count; i++) {
 		if (buf[i] != 0) {
 			fprintf (stderr,
-					"Device needs to be pre-initialized with %i bytes of zeros. Try running 'dd if=/dev/zero of=%s count=%i'\n",
-					BDL_NEW_DEVICE_BLANK_START_SIZE, device_path, BDL_NEW_DEVICE_BLANK_START_SIZE
+					"Device needs to be pre-initialized with %i bytes of zeros. Try running 'dd if=/dev/zero of=DEVICE count=%i'\n",
+					BDL_NEW_DEVICE_BLANK_START_SIZE, BDL_NEW_DEVICE_BLANK_START_SIZE
 			);
 			goto error_close;
 		}
 	}
 
 	success:
-	fclose (device);
 	return 0;
 
 	error_close:
-	fclose(device);
 	return 1;
 }
 
-int init_dev(const char *device_path, long int blocksize, long int header_pad, char padchar) {
-	if (check_blank_device(device_path)) {
-		return 1;
+int init_dev(const char *device_path, struct io_file *session_file, long int blocksize, long int header_pad, char padchar) {
+	// These are redudant checks, but keep them for now
+	if (header_pad < BDL_MINIMUM_HEADER_PAD) {
+		fprintf (stderr, "Bug: init_dev called with too small header pad\n");
+		exit (EXIT_FAILURE);
+	}
+	if (header_pad % BDL_HEADER_PAD_DIVISOR != 0) {
+		fprintf (stderr, "Bug: init_dev called with header pad not dividable by divisor\n");
+		exit (EXIT_FAILURE);
+	}
+	if (blocksize > BDL_MAXIMUM_BLOCKSIZE) {
+		fprintf(stderr, "Bug: init_dev blocksize was too large, maximum is %i\n", BDL_MAXIMUM_BLOCKSIZE);
+		exit (EXIT_FAILURE);
+	}
+	if (blocksize < BDL_MINIMUM_BLOCKSIZE) {
+		fprintf(stderr, "Bug: init_dev blocksize was too small, minimum is %i\n", BDL_MINIMUM_BLOCKSIZE);
+		exit (EXIT_FAILURE);
+	}
+	if (blocksize % BDL_BLOCKSIZE_DIVISOR != 0) {
+		fprintf(stderr, "Bug: init_dev blocksize needs to be dividable by %i\n", BDL_BLOCKSIZE_DIVISOR);
+		exit (EXIT_FAILURE);
 	}
 
 	struct bdl_header header;
@@ -90,33 +100,49 @@ int init_dev(const char *device_path, long int blocksize, long int header_pad, c
 	header.hash = 0;
 	header.default_hash_algorithm = BDL_DEFAULT_HASH_ALGORITHM;
 	header.total_size = 0;
+	header.header_size = header_pad;
 
-	struct io_file file;
-	if (io_open(device_path, "r+", &file) != 0) {
+	struct io_file file_local;
+	struct io_file *file;
+	file = &file_local;
+	if (device_path == NULL) {
+		file = session_file;
+	}
+	else if (io_open(device_path, file) != 0) {
 		fprintf (stderr, "Failed to open device %s\n", device_path);
 		return 1;
 	}
 
-	if (file.size < (header_pad + blocksize * 2)) {
-		fprintf(stderr, "The total size will be too small, minimum size is %ld\n", (header_pad + blocksize * 2));
-		io_close(&file);
+	if (check_blank_device(file)) {
 		return 1;
 	}
 
-	header.total_size = (file.size - header_pad - ((file.size - header_pad) % blocksize));
+	if (file->size < (header_pad + blocksize * 2)) {
+		fprintf(stderr, "The total size will be too small, minimum size is %ld\n", (header_pad + blocksize * 2));
+		if (device_path != NULL) {
+			io_close(file);
+		}
+		return 1;
+	}
+
+	header.total_size = (file->size - header_pad - ((file->size - header_pad) % blocksize));
 
 	uint32_t hash;
 	if (crypt_hash_data((const char *) &header, sizeof(header), header.default_hash_algorithm, &hash)) {
 		fprintf (stderr, "Hashing of header failed\n");
-		io_close(&file);
+		if (device_path != NULL) {
+			io_close(file);
+		}
 		return 1;
 	}
 
 	header.hash = hash;
 
-	int write_result = io_write_block(&file, 0, (const char *) &header, sizeof(header), header_pad_string, pad_size, 1);
+	int write_result = io_write_block(file, 0, (const char *) &header, sizeof(header), header_pad_string, pad_size, 1);
 
-	io_close(&file);
+	if (device_path != NULL) {
+		io_close(file);
+	}
 
 	if (write_result != 0) {
 		fprintf (stderr, "Failed to write header to device %s\n", device_path);

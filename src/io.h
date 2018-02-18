@@ -22,14 +22,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef BDL_IO_H
 #define BDL_IO_H
 
-struct io_file {
-	FILE *file;
-	int size;
+#define BDL_IO_SYNC_QUEUE_MAX 16
+
+struct io_sync_queue_entry {
+	void *start_address;
+	void *end_address;
 };
 
-void io_close (struct io_file *file);
-int io_open(const char *path, const char *mode, struct io_file *file);
-int io_write_block(struct io_file *file, int position, const char *data, int data_length, const char *padding, int padding_length, int verbose);
-int io_read_block(struct io_file *file, int position, char *data, int data_length);
+struct io_sync_queue {
+	struct io_sync_queue_entry entries[BDL_IO_SYNC_QUEUE_MAX];
+	int count;
+};
+
+struct io_file {
+	FILE *file;
+	unsigned long int size;
+	unsigned long int seek;
+	unsigned long int unsynced_write_bytes;
+	void *memorymap;
+	struct io_sync_queue sync_queue;
+};
+
+int io_close (struct io_file *file);
+int io_open(const char *path, struct io_file *file);
+int io_write_block(struct io_file *file, unsigned long int position, const char *data, unsigned long int data_length, const char *padding, unsigned long int padding_length, int verbose);
+int io_read_block(struct io_file *file, unsigned long int position, char *data, unsigned long int data_length);
 
 #endif

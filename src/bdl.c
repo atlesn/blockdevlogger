@@ -28,12 +28,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "defaults.h"
 #include "blocks.h"
 #include "write.h"
+#include "io.h"
+#include "validate.h"
 
 void help() {
 	printf ("Command was help\n");
 }
 
-int main(int argc, const char *argv[]) {
+struct session {
+	const char *device_path;
+	struct io_file device;
+	int device_open;
+};
+
+int interpret_command (struct session *session, int argc, const char *argv[]) {
 	if (cmd_parse(argc, argv) != 0) {
 		return EXIT_FAILURE;
 	}
@@ -41,30 +49,109 @@ int main(int argc, const char *argv[]) {
 	if (cmd_match("help")) {
 		help();
 	}
-	else if (cmd_match("write")) {
-		const char *device = cmd_get_argument(0);
-		const char *data = cmd_get_argument(1);
+	else if (cmd_match("open")) {
+		// Start a session, and write commands line by line (from STDIN)
+		const char *device_path = cmd_get_value("dev");
 
-		if (device == NULL) {
-			fprintf(stderr, "Error: Device argument was missing for write command, use 'write DEVICE DATA'\n");
-			return EXIT_FAILURE;
+		if (device_path == NULL) {
+			fprintf(stderr, "Error: Device argument was missing for open command, use 'open dev=DEVICE'\n");
+			return 1;
 		}
-		if (data == NULL) {
-			fprintf(stderr, "Error: Data argument was missing for write command, use 'write DEVICE DATA'\n");
-			return EXIT_FAILURE;
+
+		if (cmd_check_all_args_used()) {
+			return 1;
+		}
+
+		if (session->device_open != 0) {
+			fprintf (stderr, "Error: A device was already open\n");
+			return 1;
+		}
+
+		session->device_path = device_path;
+
+		if (io_open(session->device_path, &session->device) != 0) {
+			fprintf (stderr, "Error while opening device for session use\n");
+			return 1;
+		}
+
+		session->device_open = 1;
+	}
+	else if (cmd_match("close")) {
+		if (session->device_open != 1) {
+			fprintf (stderr, "Attempted to close while no device was open\n");
+			return 1;
+		}
+
+		session->device_open = 0;
+
+		if (io_close(&session->device) != 0) {
+			return 1;
+		}
+
+	}
+	else if (cmd_match("validate")) {
+		const char *device_string = cmd_get_value("dev");
+
+		if (session->device_open == 1) {
+			if (device_string != NULL) {
+					fprintf(stderr, "Error: Cannot use dev=DEVICE argument for validation in session mode\n");
+					return 1;
+			}
+		}
+		else if (device_string == NULL) {
+			fprintf(stderr, "Error: Device argument was missing for validation command, use 'validate dev=DEVICE'\n");
+			return 1;
+		}
+
+		if (cmd_check_all_args_used()) {
+			return 1;
+		}
+
+		if (validate_dev(device_string, &session->device) != 0) {
+			return 1;
+		}
+	}
+	else if (cmd_match("write")) {
+		const char *device_string = cmd_get_value("dev");
+		const char *appdata_string = cmd_get_value("appdata");
+		const char *data = cmd_get_last_argument();
+
+		uint64_t appdata = 0;
+
+		if (session->device_open == 1) {
+			if (device_string != NULL) {
+					fprintf(stderr, "Error: Cannot use dev=DEVICE argument for writes in session mode\n");
+					return 1;
+			}
+		}
+		else if (device_string == NULL) {
+			fprintf(stderr, "Error: Device argument was missing for write command, use 'write dev=DEVICE [...] DATA'\n");
+			return 1;
+		}
+		if (data == NULL || *data == '\0') {
+			fprintf(stderr, "Error: Data argument was missing for write command, use 'write dev=DEVICE [...] DATA'\n");
+			return 1;
+		}
+		if (appdata_string != NULL) {
+			if (cmd_convert_hex_64("appdata")) {
+				fprintf(stderr, "Error: Could not interpret pad charachter argument, use padchar=HEXNUMBER 1 BYTE\n");
+				return 1;
+			}
+
+			appdata = cmd_get_hex_64("appdata");
 		}
 
 		// Check that the user hasn't specified anything funny at the command line
 		if (cmd_check_all_args_used()) {
-			return EXIT_FAILURE;
+			return 1;
 		}
 
-		if (write_put_data(device, data, strlen(data)+1)) {
-			return EXIT_FAILURE;
+		if (write_put_data(device_string, &session->device, data, strlen(data)+1, appdata) != 0) {
+			return 1;
 		}
 	}
 	else if (cmd_match("init")) {
-		const char *device = cmd_get_value("dev");
+		const char *device_string = cmd_get_value("dev");
 		const char *bs_string = cmd_get_value("bs");
 		const char *hpad_string = cmd_get_value("hpad");
 		const char *padchar_string = cmd_get_value("padchar");
@@ -73,31 +160,37 @@ int main(int argc, const char *argv[]) {
 		long int header_pad = BDL_DEFAULT_HEADER_PAD;
 		char padchar = BDL_DEFAULT_PAD_CHAR;
 
-		if (device == NULL) {
-			fprintf(stderr, "Error: Argument dev was not set, specify with dev=DEVICE\n");
-			return EXIT_FAILURE;
+		if (session->device_open == 1) {
+			if (device_string != NULL) {
+					fprintf(stderr, "Error: Cannot use dev=DEVICE argument for init in session mode\n");
+					return 1;
+			}
+		}
+		else if (device_string == NULL) {
+			fprintf(stderr, "Error: Device argument was missing for write command, use 'init dev=DEVICE [...]'\n");
+			return 1;
 		}
 
 		// Parse block size argument
 		if (bs_string != NULL) {
 			if (cmd_convert_integer_10("bs")) {
 				fprintf(stderr, "Error: Could not interpret block size argument, use bs=NUMBER\n");
-				return EXIT_FAILURE;
+				return 1;
 			}
 
 			blocksize = cmd_get_integer("bs");
 
 			if (blocksize > BDL_MAXIMUM_BLOCKSIZE) {
 				fprintf(stderr, "Error: Blocksize was too large, maximum is %i\n", BDL_MAXIMUM_BLOCKSIZE);
-				return EXIT_FAILURE;
+				return 1;
 			}
 			else if (blocksize < BDL_MINIMUM_BLOCKSIZE) {
 				fprintf(stderr, "Error: Blocksize was too small, minimum is %i\n", BDL_MINIMUM_BLOCKSIZE);
-				return EXIT_FAILURE;
+				return 1;
 			}
 			else if (blocksize % BDL_BLOCKSIZE_DIVISOR != 0) {
 				fprintf(stderr, "Error: Blocksize needs to be dividable by %i\n", BDL_BLOCKSIZE_DIVISOR);
-				return EXIT_FAILURE;
+				return 1;
 			}
 		}
 
@@ -105,40 +198,135 @@ int main(int argc, const char *argv[]) {
 		if (hpad_string != NULL) {
 			if (cmd_convert_integer_10("hpad")) {
 				fprintf(stderr, "Error: Could not interpret header pad size argument, use hpad=NUMBER\n");
-				return EXIT_FAILURE;
+				return 1;
 			}
 
 			header_pad = cmd_get_integer("hpad");
 
 			if (header_pad < BDL_MINIMUM_HEADER_PAD) {
 				fprintf(stderr, "Error: Header pad was too small, minimum is %i\n", BDL_MINIMUM_HEADER_PAD);
-				return EXIT_FAILURE;
+				return 1;
 			}
 			if (header_pad % BDL_HEADER_PAD_DIVISOR != 0) {
 				fprintf(stderr, "Error: Header pad needs to be dividable by %i\n", BDL_HEADER_PAD_DIVISOR);
-				return EXIT_FAILURE;
+				return 1;
 			}
 		}
 
 		// Parse pad characher argument
 		if (padchar_string != NULL) {
-			if (cmd_convert_hex_16("padchar")) {
+			if (cmd_convert_hex_byte("padchar")) {
 				fprintf(stderr, "Error: Could not interpret pad charachter argument, use padchar=HEXNUMBER 1 BYTE\n");
-				return EXIT_FAILURE;
+				return 1;
 			}
 
-			padchar = cmd_get_hex("padchar");
+			padchar = cmd_get_hex_byte("padchar");
 		}
 
 		// Check that the user hasn't specified anything funny at the command line
 		if (cmd_check_all_args_used()) {
-			return EXIT_FAILURE;
+			return 1;
 		}
 
-		if (init_dev(device, blocksize, header_pad, padchar)) {
+		if (init_dev(device_string, &session->device, blocksize, header_pad, padchar)) {
+			return 1;
+		}
+	}
+	else {
+		fprintf (stderr, "Unknown command\n");
+		return 1;
+	}
+
+	return 0;
+}
+
+int main(int argc, const char *argv[]) {
+	struct session session;
+	session.device_path = NULL;
+	session.device.file = NULL;
+	session.device.size = 0;
+	session.device_open = 0;
+
+	int ret = interpret_command(&session, argc, argv);
+
+	while (session.device_open == 1 && !feof(stdin)) {
+		char cmdline[BDL_MAXIMUM_CMDLINE_LENGTH];
+		int argc_new = 0;
+		const char *argv_new[BDL_MAXIMUM_CMDLINE_ARGS];
+
+		argv_new[argc_new++] = argv[0];
+
+		fprintf (stderr, "Accepting commands delimeted by LF, CR or NULL\n");
+
+		int first = 1;
+		int i;
+		for (i = 0; i < BDL_MAXIMUM_CMDLINE_LENGTH - 2 && !feof(stdin); i++) {
+			char letter = getchar();
+
+			if (first == 1) {
+				if (letter == '\n' || letter == '\r' || letter == '\0') {
+					i--;
+					continue;
+				}
+			}
+
+			first = 0;
+
+			if (letter == '\n' || letter == '\r' || letter == '\0') {
+				cmdline[i] = ' ';
+				cmdline[i+1] = '\0';
+
+				char *begin = cmdline;
+				char *end = cmdline + i - 1;
+				while ((end = strchr(begin, ' ')) != NULL) {
+					*end = '\0';
+
+					// Remove extra spaces
+					while (*begin == ' ') {
+						*begin = '\0';
+						begin++;
+					}
+
+					if (argc_new == BDL_MAXIMUM_CMDLINE_ARGS) {
+						fprintf (stderr, "Maximum command line arguments reached (%i)\n", BDL_MAXIMUM_CMDLINE_ARGS - 1);
+						return EXIT_FAILURE;
+					}
+
+					argv_new[argc_new++] = begin;
+					begin = end + 1;
+				}
+
+				ret = interpret_command(&session, argc_new, argv_new);
+
+				if (ret == 1) {
+					return EXIT_FAILURE;
+				}
+				else if (session.device_open == 0) {
+					return EXIT_SUCCESS;
+				}
+
+				break;
+			}
+
+			cmdline[i] = letter;
+		}
+		if (i == BDL_MAXIMUM_CMDLINE_LENGTH - 2) {
+			fprintf (stderr, "Maximum command line length reached (%i)\n", BDL_MAXIMUM_CMDLINE_LENGTH - 2);
 			return EXIT_FAILURE;
 		}
 	}
 
-	return EXIT_SUCCESS;
+	if (session.device_open == 1) {
+		session.device_open = 0;
+		if (io_close(&session.device) != 0) {
+			return EXIT_FAILURE;
+		}
+	}
+
+	if (ret) {
+		return EXIT_SUCCESS;
+	}
+	else {
+		return EXIT_FAILURE;
+	}
 }
