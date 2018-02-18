@@ -7,9 +7,11 @@
 const char *cmd_get_value(const char *key);
 int cmd_parse(const int argc, const char *argv[]);
 int cmd_match(const char *test);
-int cmd_convert_integer_10(const char *key);
 int cmd_convert_hex_16(const char *key);
+int cmd_convert_integer_10(const char *key);
+char cmd_get_hex(const char *key);
 long int cmd_get_integer(const char *key);
 int cmd_check_all_args_used();
+const char *cmd_get_argument(int index);
 
 #endif

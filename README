@@ -1,0 +1,4 @@
+Requirements:
+
+libcrcutil-dev - library for cyclic redundancy check (CRC) computation - development files
+libcrcutil0 - library for cyclic redundancy check (CRC) computation

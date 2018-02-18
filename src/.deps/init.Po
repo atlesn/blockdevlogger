@@ -1,5 +1,0 @@
-init.o: init.c /usr/include/stdc-predef.h init.h
-
-/usr/include/stdc-predef.h:
-
-init.h:

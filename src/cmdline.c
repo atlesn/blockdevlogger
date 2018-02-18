@@ -13,12 +13,13 @@ const char *program = NULL;
 const char *command = NULL;
 const char *args[BDL_ARGUMENT_MAX];
 int args_used[BDL_ARGUMENT_MAX];
+const char *blank_argument = "";
 
 struct arg_pair {
 	char key[BDL_ARGUMENT_SIZE];
 	char value[BDL_ARGUMENT_SIZE];
 	long int value_int;
-	char value_hex;
+	unsigned char value_hex;
 	int integer_is_converted;
 	int hex_is_converted;
 };
@@ -40,7 +41,7 @@ void cmd_init() {
 
 int cmd_check_all_args_used() {
 	int err = 0;
-	for (int i = 0; i < BDL_ARGUMENT_MAX && args[i] != NULL; i++) {
+	for (int i = 0; i < BDL_ARGUMENT_MAX && *args[i] != '\0'; i++) {
 		if (args_used[i] != 1) {
 			fprintf (stderr, "Error: Argument %i ('%s') was not used, possible junk or typo\n", i, args[i]);
 			err = 1;
@@ -81,7 +82,7 @@ int cmd_convert_hex_16(const char *key) {
 
 	#ifdef BDL_DBG_CMDLINE
 
-	printf ("Converted argument with key '%s' to hex '%02x'\n", key, arg_pairs[index].value_hex);
+	printf ("Converted argument with key '%s' to hex '%x'\n", key, arg_pairs[index].value_hex);
 
 	#endif
 
@@ -116,11 +117,31 @@ int cmd_convert_integer_10(const char *key) {
 	return 0;
 }
 
+char cmd_get_hex(const char *key) {
+	int index = cmd_get_value_index(key);
+
+	if (index == -1) {
+		fprintf(stderr, "Bug: Called cmd_get_hex with unknown key '%s'\n", key);
+		exit (EXIT_FAILURE);
+	}
+
+	#ifdef BDL_DBG_CMDLINE
+	if (arg_pairs[index].hex_is_converted != 1) {
+		fprintf(stderr, "Bug: Called cmd_get_hex without cmd_convert_hex being called first\n");
+		exit (EXIT_FAILURE);
+	}
+	#endif
+
+	args_used[index] = 1;
+
+	return arg_pairs[index].value_hex;
+}
+
 long int cmd_get_integer(const char *key) {
 	int index = cmd_get_value_index(key);
 
 	if (index == -1) {
-		fprintf(stderr, "Bug: Called cmd_convert_integer with unknown key '%s'\n", key);
+		fprintf(stderr, "Bug: Called cmd_get_integer with unknown key '%s'\n", key);
 		exit (EXIT_FAILURE);
 	}
 
@@ -151,6 +172,13 @@ const char *cmd_get_value(const char *key) {
 	return NULL;
 }
 
+const char *cmd_get_argument(int index) {
+	if (index >= BDL_ARGUMENT_MAX || *args[index] == '\0') {
+		return NULL;
+	}
+	args_used[index] = 1;
+	return args[index];
+}
 
 int cmd_parse(int argc, const char *argv[]) {
 	program = argv[0];
@@ -164,11 +192,16 @@ int cmd_parse(int argc, const char *argv[]) {
 
 	command = argv[1];
 
+	// Initialize all to empty strings
+	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
+		args[i] = blank_argument;
+	}
+
 	// Store pointers to all arguments
 	int arg_pos = 2;
 	for (int i = 0; i < BDL_ARGUMENT_MAX && arg_pos < argc; i++) {
-		arg_pos = 2 + i;
 		args[i] = argv[arg_pos];
+		arg_pos++;
 	}
 
 	// Parse key-value pairs separated by =

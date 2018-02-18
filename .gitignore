@@ -4,6 +4,7 @@ Makefile
 Makefile.in
 *.o
 *.so
+.deps
 
 # http://www.gnu.org/software/autoconf
 
