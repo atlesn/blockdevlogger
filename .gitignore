@@ -6,6 +6,9 @@ Makefile.in
 *.so
 .deps
 
+# binaries
+/src/bdl
+
 # http://www.gnu.org/software/autoconf
 
 /autom4te.cache
