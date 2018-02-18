@@ -136,7 +136,7 @@ int block_validate_header (const struct bdl_header *header, int file_size) {
 }
 
 int block_get_master_header(struct io_file *file, struct bdl_header *header) {
-	if (io_read_checked((char*) header, sizeof(*header), file) != 0) {
+	if (io_read_block(file, 0, (char *) header, sizeof(*header)) != 0) {
 		fprintf (stderr, "Error while reading header from file\n");
 		return 1;
 	}
