@@ -44,6 +44,7 @@ corrupted, no operations may be performed. If a hint block or
 data block is corrupted, it is considered free space.
 
 == COMMANDS ==
+
 bdl init dev={DEVICE} [bs=BLOCKSIZE] [hpad=HEADER PADDING] [padchar=BYTE IN HEX]
 
 Initializes a device by writing a new header.
