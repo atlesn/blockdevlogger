@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -180,9 +181,21 @@ int io_write(struct io_file *file, const void *source, unsigned int length) {
 	if (io_update_sync_queue(&file->sync_queue, write_location, write_location + length) || file->unsynced_write_bytes >= BDL_MMAP_SYNC_SIZE) {
 		for (int i = 0; i < file->sync_queue.count; i++) {
 			struct io_sync_queue_entry *entry = &file->sync_queue.entries[i];
-			printf ("Sync %llu - %lu\n", (long long unsigned int) entry->start_address, entry->end_address - entry->start_address);
 
-			entry->start_address = entry->start_address;
+			// Align to page size
+			uintptr_t address_fix = (uintptr_t) entry->start_address;
+
+			// Mask with 10 ones at the end if page size is 4096
+			uintptr_t address_mask = getpagesize() - 1;
+
+			// Invert mask
+			address_mask = ~address_mask;
+
+			// Round address with the mask by removing the end
+			address_fix = address_fix & address_mask;
+			entry->start_address = (void *) address_fix;
+
+			printf ("B: Sync %llu - %lu\n", (long long unsigned int) entry->start_address, entry->end_address - entry->start_address);
 
 			if (entry->start_address < file->memorymap) {
 				entry->start_address = file->memorymap;
