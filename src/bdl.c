@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "io.h"
 #include "validate.h"
 #include "session.h"
+#include "read.h"
 
 void help() {
 	printf ("Command was help\n");
@@ -109,10 +110,10 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
 		const char *timestamp_gteq_string = cmd_get_value(&session->cmd_data, "ts_gteq");
 
-		long int timestamp_gteq = 0;
+		uint64_t timestamp_gteq = 0;
 
 		if (timestamp_gteq_string != NULL) {
-			if (cmd_convert_integer_10(&session->cmd_data, "ts_gteq")) {
+			if (cmd_convert_uint64_10(&session->cmd_data, "ts_gteq")) {
 				fprintf(stderr, "Error: Could not interpret timestamp greater or equal argument, use ts_gteq=POSITIVE INTEGER\n");
 				return 1;
 			}
@@ -125,6 +126,12 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		if (start_session (session, device_string) != 0) {
 			fprintf (stderr, "Could not start session for read command\n");
+			return 1;
+		}
+
+		if (read_blocks(&session->device, timestamp_gteq) != 0) {
+			fprintf (stderr, "Error while reading blocks\n");
+			close_session(session);
 			return 1;
 		}
 

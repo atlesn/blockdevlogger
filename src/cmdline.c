@@ -126,6 +126,35 @@ int cmd_convert_hex_64(struct cmd_data *data, const char *key) {
 
 	return 0;
 }
+
+int cmd_convert_uint64_10(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
+	if (index == -1) {
+		return 1;
+	}
+
+	if (data->arg_pairs[index].uint64_is_converted) {
+		return 0;
+	}
+
+	char *err;
+	data->arg_pairs[index].value_uint_64 = strtoull(data->arg_pairs[index].value, &err, 10);
+
+	if (err[0] != '\0') {
+		return 1;
+	}
+
+	data->arg_pairs[index].uint64_is_converted = 1;
+
+	#ifdef BDL_DBG_CMDLINE
+
+	printf ("Converted argument with key '%s' to uint64 %'" PRIx64 "'\n", key, data->arg_pairs[index].value_uint_64);
+
+	#endif
+
+	return 0;
+}
+
 int cmd_convert_integer_10(struct cmd_data *data, const char *key) {
 	int index = cmd_get_value_index(data, key);
 	if (index == -1) {
@@ -212,6 +241,26 @@ long int cmd_get_integer(struct cmd_data *data, const char *key) {
 	data->args_used[index] = 1;
 
 	return data->arg_pairs[index].value_int;
+}
+
+uint64_t cmd_get_uint64(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
+
+	if (index == -1) {
+		fprintf(stderr, "Bug: Called cmd_get_uint64 with unknown key '%s'\n", key);
+		exit (EXIT_FAILURE);
+	}
+
+	#ifdef BDL_DBG_CMDLINE
+	if (data->arg_pairs[index].uint64_is_converted != 1) {
+		fprintf(stderr, "Bug: Called cmd_get_uint64 without cmd_convert_uint64 being called first\n");
+		exit (EXIT_FAILURE);
+	}
+	#endif
+
+	data->args_used[index] = 1;
+
+	return data->arg_pairs[index].value_uint_64;
 }
 
 const char *cmd_get_value(struct cmd_data *data, const char *key) {

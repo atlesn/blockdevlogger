@@ -35,9 +35,11 @@ struct cmd_arg_pair {
 	long int value_int;
 	unsigned char value_hex;
 	uint64_t value_hex_64;
+	uint64_t value_uint_64;
 	int integer_is_converted;
 	int hex_is_converted;
 	int hex64_is_converted;
+	int uint64_is_converted;
 };
 
 struct cmd_data {
@@ -54,10 +56,12 @@ int cmd_match						(struct cmd_data *data, const char *test);
 int cmd_convert_hex_64				(struct cmd_data *data, const char *key);
 int cmd_convert_hex_byte			(struct cmd_data *data, const char *key);
 int cmd_convert_integer_10			(struct cmd_data *data, const char *key);
+int cmd_convert_uint64_10			(struct cmd_data *data, const char *key);
 
 char cmd_get_hex_byte				(struct cmd_data *data, const char *key);
 uint64_t cmd_get_hex_64				(struct cmd_data *data, const char *key);
 long int cmd_get_integer			(struct cmd_data *data, const char *key);
+uint64_t cmd_get_uint64				(struct cmd_data *data, const char *key);
 const char *cmd_get_argument		(struct cmd_data *data, int index);
 const char *cmd_get_last_argument	(struct cmd_data *data);
 const char *cmd_get_value			(struct cmd_data *data, const char *key);

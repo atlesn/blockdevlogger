@@ -22,6 +22,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef BDL_IO_H
 #define BDL_IO_H
 
+#include <stdio.h>
+
 #define BDL_IO_SYNC_QUEUE_MAX 16
 
 struct io_sync_queue_entry {
