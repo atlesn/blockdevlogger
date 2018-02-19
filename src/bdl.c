@@ -1,6 +1,6 @@
 /*
 
-Block Device Loggeer
+Block Device Logger
 
 Copyright (C) 2018 Atle Solbakken atle@goliathdns.no
 
