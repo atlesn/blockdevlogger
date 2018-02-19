@@ -1,0 +1,5 @@
+block-device-logger (0.1-1) unstable; urgency=medium
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Atle Solbakken <atle@goliathdns.no>  Mon, 19 Feb 2018 05:17:02 +0100
