@@ -21,4 +21,4 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "io.h"
 
-int init_dev(const char *device, struct io_file *file, long int blocksize, long int header_pad, char padchar);
+int init_dev(struct io_file *file, long int blocksize, long int header_pad, char padchar);

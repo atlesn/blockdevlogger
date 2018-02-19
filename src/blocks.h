@@ -29,8 +29,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 struct bdl_header {
 	uint8_t header_begin_message[32];
 
-	uint8_t version_major;
-	uint8_t version_minor;
+	/* Version number to detect incompatibilities */
+	int16_t blocksystem_version;
 
 	/* Usually 0xff or 0x00 */
 	uint8_t pad_character;
@@ -68,7 +68,10 @@ struct bdl_block_header {
 };
 
 struct bdl_hint_block {
-	int64_t previous_block_pos;
+	uint64_t previous_block_pos;
+
+	/* The application may tag blocks for instance marking which have been processed */
+	uint64_t previous_tagged_block_pos;
 
 	/* Future use? */
 	uint32_t pad;
@@ -83,16 +86,16 @@ struct bdl_header_pad {
 
 struct bdl_hintblock_state {
 	int valid;
-	int blockstart_min;
-	int blockstart_max;
-	int location;
+	unsigned long int blockstart_min;
+	unsigned long int blockstart_max;
+	unsigned long int location;
 	uint64_t highest_timestamp;
 	struct bdl_hint_block hintblock;
 };
 
 struct bdl_block_location {
-	int block_location;
-	int hintblock_location;
+	unsigned long int block_location;
+	unsigned long int hintblock_location;
 };
 
 struct bdl_hintblock_loop_callback_data {
@@ -105,15 +108,22 @@ struct bdl_hintblock_loop_callback_data {
 		const struct bdl_header *master_header;
 		struct bdl_block_location *location;
 		struct bdl_hintblock_state *state;
-		int position;
-		int blockstart_min;
-		int blockstart_max;
+		unsigned long int position;
+		unsigned long int blockstart_min;
+		unsigned long int blockstart_max;
 };
 
 #define BDL_HINTBLOCK_LOOP_OK		0
 #define BDL_HINTBLOCK_LOOP_ERR		1
 #define BDL_HINTBLOCK_LOOP_BREAK	2
 
+int block_get_valid_hintblock (
+		struct io_file *file,
+		unsigned long int pos,
+		const struct bdl_header *master_header,
+		struct bdl_hint_block *hintblock,
+		int *result
+);
 int block_loop_hintblocks_large_device(
 		struct io_file *file,
 		const struct bdl_header *header,

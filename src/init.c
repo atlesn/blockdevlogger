@@ -62,7 +62,7 @@ int check_blank_device (struct io_file *file) {
 	return 1;
 }
 
-int init_dev(const char *device_path, struct io_file *session_file, long int blocksize, long int header_pad, char padchar) {
+int init_dev(struct io_file *session_file, long int blocksize, long int header_pad, char padchar) {
 	// These are redudant checks, but keep them for now
 	if (header_pad < BDL_MINIMUM_HEADER_PAD) {
 		fprintf (stderr, "Bug: init_dev called with too small header pad\n");
@@ -93,8 +93,7 @@ int init_dev(const char *device_path, struct io_file *session_file, long int blo
 	memset (header_pad_string, padchar, pad_size);
 
 	strncpy(header.header_begin_message, BDL_CONFIG_HEADER_START, 32);
-	header.version_major = BDL_CONFIG_VERSION_MAJOR;
-	header.version_minor = BDL_CONFIG_VERSION_MINOR;
+	header.blocksystem_version = BDL_BLOCKSYSTEM_VERSION;
 	header.block_size = blocksize;
 	header.pad_character = padchar;
 	header.hash = 0;
@@ -102,50 +101,29 @@ int init_dev(const char *device_path, struct io_file *session_file, long int blo
 	header.total_size = 0;
 	header.header_size = header_pad;
 
-	struct io_file file_local;
-	struct io_file *file;
-	file = &file_local;
-	if (device_path == NULL) {
-		file = session_file;
-	}
-	else if (io_open(device_path, file) != 0) {
-		fprintf (stderr, "Failed to open device %s\n", device_path);
+	if (check_blank_device(session_file)) {
 		return 1;
 	}
 
-	if (check_blank_device(file)) {
-		return 1;
-	}
-
-	if (file->size < (header_pad + blocksize * 2)) {
+	if (session_file->size < (header_pad + blocksize * 2)) {
 		fprintf(stderr, "The total size will be too small, minimum size is %ld\n", (header_pad + blocksize * 2));
-		if (device_path != NULL) {
-			io_close(file);
-		}
 		return 1;
 	}
 
-	header.total_size = (file->size - header_pad - ((file->size - header_pad) % blocksize));
+	header.total_size = (session_file->size - header_pad - ((session_file->size - header_pad) % blocksize));
 
 	uint32_t hash;
 	if (crypt_hash_data((const char *) &header, sizeof(header), header.default_hash_algorithm, &hash)) {
 		fprintf (stderr, "Hashing of header failed\n");
-		if (device_path != NULL) {
-			io_close(file);
-		}
 		return 1;
 	}
 
 	header.hash = hash;
 
-	int write_result = io_write_block(file, 0, (const char *) &header, sizeof(header), header_pad_string, pad_size, 1);
-
-	if (device_path != NULL) {
-		io_close(file);
-	}
+	int write_result = io_write_block(session_file, 0, (const char *) &header, sizeof(header), header_pad_string, pad_size, 1);
 
 	if (write_result != 0) {
-		fprintf (stderr, "Failed to write header to device %s\n", device_path);
+		fprintf (stderr, "Failed to write header to device\n");
 		return 1;
 	}
 

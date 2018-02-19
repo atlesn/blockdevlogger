@@ -58,12 +58,37 @@ int block_hintblock_get_last_block (
 	return 0;
 }
 
+int block_get_valid_hintblock (
+		struct io_file *file,
+		unsigned long int pos,
+		const struct bdl_header *master_header,
+		struct bdl_hint_block *hintblock,
+		int *result
+) {
+	*result = 0;
+
+	if (io_read_block (file, pos, (char *) hintblock, sizeof(*hintblock)) != 0) {
+		fprintf (stderr, "Error while reading hint block area at %lu\n", pos);
+		return 1;
+	}
+
+	struct bdl_hint_block hintblock_copy = *hintblock;
+
+	int hash_return;
+	if (validate_hint (&hintblock_copy, master_header, result) != 0) {
+		fprintf (stderr, "Error while checking hash for hint block at %lu\n", pos);
+		return 1;
+	}
+
+	return 0;
+}
+
 int block_get_hintblock_state (
 		struct io_file *file,
-		int pos,
+		unsigned long int pos,
 		const struct bdl_header *master_header,
-		int blockstart_min,
-		int blockstart_max,
+		unsigned long int blockstart_min,
+		unsigned long int blockstart_max,
 		struct bdl_hintblock_state *state
 ) {
 	state->valid = 0;
@@ -72,21 +97,17 @@ int block_get_hintblock_state (
 	state->highest_timestamp = 0;
 	state->location = pos;
 
-	if (io_read_block (file, pos, (char *) &state->hintblock, sizeof(state->hintblock)) != 0) {
-		fprintf (stderr, "Error while reading hint block area at %i\n", pos);
+	int result;
+	if (block_get_valid_hintblock(file, pos, master_header, &state->hintblock, &result) != 0) {
+		fprintf (stderr, "Error while reading hint block area at %lu\n", pos);
 		return 1;
 	}
 
-	struct bdl_hint_block hintblock_copy = state->hintblock;
-	hintblock_copy.hash = 0;
-
-	int hash_return;
-	if (validate_hint (&hintblock_copy, master_header, &hash_return) != 0) {
-		fprintf (stderr, "Error while checking hash for hint block at %i\n", pos);
-		return 1;
+	if (result != 0) {
+		state->valid = 0;
+		return 0;
 	}
-
-	if (state->hintblock.previous_block_pos > blockstart_max || state->hintblock.previous_block_pos < blockstart_min) {
+	else if (state->hintblock.previous_block_pos > blockstart_max || state->hintblock.previous_block_pos < blockstart_min) {
 		state->valid = 0;
 		return 0;
 	}
@@ -134,15 +155,15 @@ int block_loop_hintblocks_large_device (
 	callback_data->location = location;
 
 	unsigned long int device_size = file->size;
-	int header_size = header->header_size;
+	unsigned long int header_size = header->header_size;
 
-	int blockstart_min = header_size;
+	unsigned long int blockstart_min = header_size;
 
-	int loop_begin = header_size + BDL_DEFAULT_HINT_BLOCK_SPACING;
-	int loop_spacing = BDL_DEFAULT_HINT_BLOCK_SPACING;
+	unsigned long int loop_begin = header_size + BDL_DEFAULT_HINT_BLOCK_SPACING;
+	unsigned long int loop_spacing = BDL_DEFAULT_HINT_BLOCK_SPACING;
 
-	for (int i = loop_begin; i < device_size; i += loop_spacing) {
-		int blockstart_max = i - header->block_size;
+	for (unsigned long int i = loop_begin; i < device_size; i += loop_spacing) {
+		unsigned long int blockstart_max = i - header->block_size;
 
 		if (block_get_hintblock_state (
 				file, i, header,
@@ -151,7 +172,7 @@ int block_loop_hintblocks_large_device (
 				hintblock_state
 				) != 0
 		) {
-			fprintf (stderr, "Error while reading hint block at %i while looping\n", i);
+			fprintf (stderr, "Error while reading hint block at %lu while looping\n", i);
 			return 1;
 		}
 

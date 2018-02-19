@@ -235,6 +235,53 @@ int write_put_and_pad_block (struct io_file *file, int pos, const char *data, in
 	return 0;
 }
 
+int write_update_hintblock (
+		struct io_file *file,
+		const struct bdl_block_location *location,
+		const struct bdl_header *header
+
+) {
+	// Work on hint block
+	struct bdl_hint_block hint_block;
+	int result;
+
+	// Preserve information from exisiting hint block
+	if (block_get_valid_hintblock(file, location->hintblock_location, header, &hint_block, &result)) {
+		fprintf (stderr, "Error while getting hint block at %lu\n", location->hintblock_location);
+		return 1;
+	}
+
+	if (result != 0) {
+		memset (&hint_block, '\0', sizeof(hint_block));
+	}
+
+	hint_block.previous_block_pos = location->block_location;
+	hint_block.hash = 0;
+
+	if (crypt_hash_data(
+			(const char *) &hint_block,
+			sizeof(hint_block),
+			header->default_hash_algorithm,
+			&hint_block.hash) != 0
+	) {
+		fprintf (stderr, "Error while hashing hint block\n");
+		return 1;
+	}
+
+	if (write_put_and_pad_block(
+			file,
+			location->hintblock_location,
+			(const char *) &hint_block, sizeof(hint_block),
+			header->pad_character,
+			header->block_size) != 0
+	) {
+		fprintf (stderr, "Error while putting hint block\n");
+		return 1;
+	}
+
+	return 0;
+}
+
 int write_put_block (
 		struct io_file *file,
 		const char *data,
@@ -293,88 +340,37 @@ int write_put_block (
 		return 1;
 	}
 
-	// Work on hint block
-	struct bdl_hint_block hint_block;
-	memset (&hint_block, '\0', sizeof(hint_block));
-	hint_block.previous_block_pos = location->block_location;
-
-	if (crypt_hash_data(
-			(const char *) &hint_block,
-			sizeof(hint_block),
-			header->default_hash_algorithm,
-			&hint_block.hash) != 0
-	) {
-		fprintf (stderr, "Error while hashing hint block\n");
-		return 1;
-	}
-
-	if (write_put_and_pad_block(
-			file,
-			location->hintblock_location,
-			(const char *) &hint_block, sizeof(hint_block),
-			header->pad_character,
-			header->block_size) != 0
-	) {
-		fprintf (stderr, "Error while putting hint block\n");
-		return 1;
-	}
-
-	return 0;
+	return write_update_hintblock(file, location, header);
 }
 
-int write_put_data(const char *device_path, struct io_file *session_file, const char *data, int data_length, uint64_t appdata) {
-	struct io_file local_file;
-	struct io_file *file;
-
-	if (device_path != NULL) {
-		file = &local_file;
-		if (io_open(device_path, file) != 0) {
-			fprintf (stderr, "Error while opening %s while placing data\n", device_path);
-			return 1;
-		}
-	}
-	else {
-		file = session_file;
-	}
-
+int write_put_data(struct io_file *session_file, const char *data, int data_length, uint64_t appdata) {
 	struct bdl_header header;
 	int result;
 
-	if (block_get_master_header(file, &header, &result) != 0) {
-		fprintf (stderr, "Could not get header from device %s while writing new data block\n", device_path);
-		goto out_error;
+	if (block_get_master_header(session_file, &header, &result) != 0) {
+		fprintf (stderr, "Could not get header from device while writing new data block\n");
+		return 1;
 	}
 
 	if (result != 0) {
-		fprintf (stderr, "Invalid header of device %s while writing new data block\n", device_path);
-		goto out_error;
+		fprintf (stderr, "Invalid header of device while writing new data block\n");
+		return 1;
 	}
 
 	struct bdl_block_location location;
-	if (write_find_location (file, &header, &location) != 0) {
-		fprintf (stderr, "Error while finding write location for device %s\n", device_path);
-		goto out_error;
+	if (write_find_location (session_file, &header, &location) != 0) {
+		fprintf (stderr, "Error while finding write location for device\n");
+		return 1;
 	}
 
 #ifdef BDL_DBG_WRITE
-	printf ("Writing new block at location %i with hintblock at %i\n", location.block_location, location.hintblock_location);
+	printf ("Writing new block at location %lu with hintblock at %lu\n", location.block_location, location.hintblock_location);
 #endif
 
-	if (write_put_block(file, data, data_length, appdata, &location, &header) != 0) {
-		fprintf (stderr, "Error while placing data block to location %i\n", location.block_location);
-		goto out_error;
+	if (write_put_block(session_file, data, data_length, appdata, &location, &header) != 0) {
+		fprintf (stderr, "Error while placing data block to location %lu\n", location.block_location);
+		return 1;
 	}
 
-	success:
-	if (device_path != NULL) {
-		io_close(file);
-	}
 	return 0;
-
-	out_error:
-	if (device_path != NULL) {
-		io_close(file);
-	}
-
-	return 1;
 }

@@ -115,12 +115,10 @@ int validate_header (const struct bdl_header *header, int file_size, int *result
 		*result = 1;
 	}
 
-	if (header->version_major != BDL_CONFIG_VERSION_MAJOR || header->version_minor != BDL_CONFIG_VERSION_MINOR) {
-		fprintf (stderr, "Incompatible header version. Header has version is V%u.%u, and we require V%u.%u.",
-				header->version_major,
-				header->version_minor,
-				BDL_CONFIG_VERSION_MAJOR,
-				BDL_CONFIG_VERSION_MINOR
+	if (header->blocksystem_version != BDL_BLOCKSYSTEM_VERSION) {
+		fprintf (stderr, "Incompatible blocksystem version. Header has version is V %u, and we require V %u\n",
+				header->blocksystem_version,
+				BDL_BLOCKSYSTEM_VERSION
 		);
 		*result = 1;
 	}

@@ -30,20 +30,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "write.h"
 #include "io.h"
 #include "validate.h"
+#include "session.h"
 
 void help() {
 	printf ("Command was help\n");
 }
 
-struct session {
-	const char *device_path;
-	struct io_file device;
-	int device_open;
-};
-
 int interpret_command (struct session *session, int argc, const char *argv[]) {
 	if (cmd_parse(argc, argv) != 0) {
-		return EXIT_FAILURE;
+		return 1;
 	}
 
 	if (argc == 1 || cmd_match("help")) {
@@ -62,44 +57,30 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			return 1;
 		}
 
-		if (session->device_open != 0) {
+		if (session->usercount != 0) {
 			fprintf (stderr, "Error: A device was already open\n");
 			return 1;
 		}
 
-		session->device_path = device_path;
-
-		if (io_open(session->device_path, &session->device) != 0) {
+		if (start_session(session, device_path) != 0) {
 			fprintf (stderr, "Error while opening device for session use\n");
 			return 1;
 		}
-
-		session->device_open = 1;
 	}
 	else if (cmd_match("close")) {
-		if (session->device_open != 1) {
+		if (session->usercount == 0) {
 			fprintf (stderr, "Attempted to close while no device was open\n");
 			return 1;
 		}
 
-		session->device_open = 0;
-
-		if (io_close(&session->device) != 0) {
-			return 1;
-		}
+		close_session(session);
 
 	}
 	else if (cmd_match("validate")) {
 		const char *device_string = cmd_get_value("dev");
 
-		if (session->device_open == 1) {
-			if (device_string != NULL) {
-					fprintf(stderr, "Error: Cannot use dev=DEVICE argument for validation in session mode\n");
-					return 1;
-			}
-		}
-		else if (device_string == NULL) {
-			fprintf(stderr, "Error: Device argument was missing for validation command, use 'validate dev=DEVICE'\n");
+		if (start_session (session, device_string) != 0) {
+			fprintf (stderr, "Could not start session for validate command\n");
 			return 1;
 		}
 
@@ -108,8 +89,36 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		}
 
 		if (validate_dev(device_string, &session->device) != 0) {
+			close_session(session);
 			return 1;
 		}
+
+		close_session(session);
+	}
+	else if (cmd_match("read")) {
+		const char *device_string = cmd_get_value("dev");
+		const char *timestamp_gteq_string = cmd_get_value("ts_gteq");
+
+		long int timestamp_gteq = 0;
+
+		if (timestamp_gteq_string != NULL) {
+			if (cmd_convert_integer_10("ts_gteq")) {
+				fprintf(stderr, "Error: Could not interpret timestamp greater or equal argument, use ts_gteq=POSITIVE INTEGER\n");
+				return 1;
+			}
+			timestamp_gteq = cmd_get_integer("ts_gteq");
+			if (timestamp_gteq < 0) {
+				fprintf(stderr, "Error: Timestamp greater or equal argument must be zero or greater, %lu was gives\n", timestamp_gteq);
+				return 1;
+			}
+		}
+
+		if (start_session (session, device_string) != 0) {
+			fprintf (stderr, "Could not start session for read command\n");
+			return 1;
+		}
+
+		close_session(session);
 	}
 	else if (cmd_match("write")) {
 		const char *device_string = cmd_get_value("dev");
@@ -118,16 +127,6 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		uint64_t appdata = 0;
 
-		if (session->device_open == 1) {
-			if (device_string != NULL) {
-					fprintf(stderr, "Error: Cannot use dev=DEVICE argument for writes in session mode\n");
-					return 1;
-			}
-		}
-		else if (device_string == NULL) {
-			fprintf(stderr, "Error: Device argument was missing for write command, use 'write dev=DEVICE [...] DATA'\n");
-			return 1;
-		}
 		if (data == NULL || *data == '\0') {
 			fprintf(stderr, "Error: Data argument was missing for write command, use 'write dev=DEVICE [...] DATA'\n");
 			return 1;
@@ -146,9 +145,17 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			return 1;
 		}
 
-		if (write_put_data(device_string, &session->device, data, strlen(data)+1, appdata) != 0) {
+		if (start_session(session, device_string) != 0) {
+			fprintf (stderr, "Could not start session for write command\n");
 			return 1;
 		}
+
+		if (write_put_data(&session->device, data, strlen(data)+1, appdata) != 0) {
+			close_session(session);
+			return 1;
+		}
+
+		close_session(session);
 	}
 	else if (cmd_match("init")) {
 		const char *device_string = cmd_get_value("dev");
@@ -160,16 +167,6 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		long int header_pad = BDL_DEFAULT_HEADER_PAD;
 		char padchar = BDL_DEFAULT_PAD_CHAR;
 
-		if (session->device_open == 1) {
-			if (device_string != NULL) {
-					fprintf(stderr, "Error: Cannot use dev=DEVICE argument for init in session mode\n");
-					return 1;
-			}
-		}
-		else if (device_string == NULL) {
-			fprintf(stderr, "Error: Device argument was missing for write command, use 'init dev=DEVICE [...]'\n");
-			return 1;
-		}
 
 		// Parse block size argument
 		if (bs_string != NULL) {
@@ -228,9 +225,17 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			return 1;
 		}
 
-		if (init_dev(device_string, &session->device, blocksize, header_pad, padchar)) {
+		if (start_session (session, device_string) != 0) {
+			fprintf (stderr, "Error while starting session for init command\n");
 			return 1;
 		}
+
+		if (init_dev(&session->device, blocksize, header_pad, padchar)) {
+			fprintf (stderr, "Device intialization failed\n");
+			close_session(session);
+			return 1;
+		}
+		close_session(session);
 	}
 	else {
 		fprintf (stderr, "Unknown command\n");
@@ -242,14 +247,11 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 int main(int argc, const char *argv[]) {
 	struct session session;
-	session.device_path = NULL;
-	session.device.file = NULL;
-	session.device.size = 0;
-	session.device_open = 0;
+	init_session (&session);
 
 	int ret = interpret_command(&session, argc, argv);
 
-	while (session.device_open == 1 && !feof(stdin)) {
+	while (session.usercount > 0 && !feof(stdin)) {
 		char cmdline[BDL_MAXIMUM_CMDLINE_LENGTH];
 		int argc_new = 0;
 		const char *argv_new[BDL_MAXIMUM_CMDLINE_ARGS];
@@ -301,7 +303,7 @@ int main(int argc, const char *argv[]) {
 				if (ret == 1) {
 					return EXIT_FAILURE;
 				}
-				else if (session.device_open == 0) {
+				else if (session.usercount == 0) {
 					return EXIT_SUCCESS;
 				}
 
@@ -316,11 +318,10 @@ int main(int argc, const char *argv[]) {
 		}
 	}
 
-	if (session.device_open == 1) {
-		session.device_open = 0;
-		if (io_close(&session.device) != 0) {
-			return EXIT_FAILURE;
-		}
+	// We consider it an error if filehandle is not cleaned up
+	while (session.usercount > 0) {
+		ret = 0;
+		close_session(&session);
 	}
 
 	if (ret) {

@@ -22,6 +22,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef BDL_DEFAULTS_H
 #define BDL_DEFAULTS_H
 
+/* Blocksystem version */
+#define BDL_BLOCKSYSTEM_VERSION 2
+
 /* Blocks are allocated on the stack, don't make them too big */
 #define BDL_DEFAULT_BLOCKSIZE 512
 #define BDL_MINIMUM_BLOCKSIZE 512
