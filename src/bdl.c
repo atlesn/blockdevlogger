@@ -46,7 +46,7 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		return EXIT_FAILURE;
 	}
 
-	if (cmd_match("help")) {
+	if (argc == 1 || cmd_match("help")) {
 		help();
 	}
 	else if (cmd_match("open")) {
