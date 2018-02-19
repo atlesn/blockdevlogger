@@ -245,18 +245,15 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 	return 0;
 }
 
-int main(int argc, const char *argv[]) {
-	struct session session;
-	init_session (&session);
+int main_loop(struct session *session, const char *program_name) {
+	int ret = 1;
 
-	int ret = interpret_command(&session, argc, argv);
-
-	while (session.usercount > 0 && !feof(stdin)) {
+	while (session->usercount > 0 && !feof(stdin)) {
 		char cmdline[BDL_MAXIMUM_CMDLINE_LENGTH];
 		int argc_new = 0;
 		const char *argv_new[BDL_MAXIMUM_CMDLINE_ARGS];
 
-		argv_new[argc_new++] = argv[0];
+		argv_new[argc_new++] = program_name;
 
 		fprintf (stderr, "Accepting commands delimeted by LF, CR or NULL\n");
 
@@ -291,20 +288,20 @@ int main(int argc, const char *argv[]) {
 
 					if (argc_new == BDL_MAXIMUM_CMDLINE_ARGS) {
 						fprintf (stderr, "Maximum command line arguments reached (%i)\n", BDL_MAXIMUM_CMDLINE_ARGS - 1);
-						return EXIT_FAILURE;
+						return 1;
 					}
 
 					argv_new[argc_new++] = begin;
 					begin = end + 1;
 				}
 
-				ret = interpret_command(&session, argc_new, argv_new);
+				ret = interpret_command(session, argc_new, argv_new);
 
 				if (ret == 1) {
-					return EXIT_FAILURE;
+					return 1;
 				}
-				else if (session.usercount == 0) {
-					return EXIT_SUCCESS;
+				else if (session->usercount == 0) {
+					return 0;
 				}
 
 				break;
@@ -314,20 +311,35 @@ int main(int argc, const char *argv[]) {
 		}
 		if (i == BDL_MAXIMUM_CMDLINE_LENGTH - 2) {
 			fprintf (stderr, "Maximum command line length reached (%i)\n", BDL_MAXIMUM_CMDLINE_LENGTH - 2);
-			return EXIT_FAILURE;
+			return 1;
 		}
+	}
+
+	return ret;
+}
+
+int main(int argc, const char *argv[]) {
+	struct session session;
+	init_session (&session);
+
+	int ret;
+
+	ret = interpret_command(&session, argc, argv);
+
+	/* And open command increments the user count. Run interactive. */
+	if (session.usercount > 0) {
+		ret = main_loop(&session, argv[0]);
 	}
 
 	// We consider it an error if filehandle is not cleaned up
 	while (session.usercount > 0) {
-		ret = 0;
+		ret = 1;
 		close_session(&session);
 	}
 
-	if (ret) {
-		return EXIT_SUCCESS;
-	}
-	else {
+	if (ret != 0) {
 		return EXIT_FAILURE;
 	}
+
+	return EXIT_SUCCESS;
 }
