@@ -30,59 +30,37 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //#define BDL_DBG_CMDLINE
 
-const char *command_help = "help";
+static const char *cmd_blank_argument = "";
 
-#define BDL_ARGUMENT_MAX BDL_MAXIMUM_CMDLINE_ARGS
-#define BDL_ARGUMENT_SIZE BDL_MAXIMUM_CMDLINE_ARG_SIZE
-
-const char *program = NULL;
-const char *command = NULL;
-const char *args[BDL_ARGUMENT_MAX];
-int args_used[BDL_ARGUMENT_MAX];
-const char *blank_argument = "";
-
-struct arg_pair {
-	char key[BDL_ARGUMENT_SIZE];
-	char value[BDL_ARGUMENT_SIZE];
-	long int value_int;
-	unsigned char value_hex;
-	uint64_t value_hex_64;
-	int integer_is_converted;
-	int hex_is_converted;
-	int hex64_is_converted;
-};
-
-struct arg_pair arg_pairs[BDL_ARGUMENT_MAX];
-
-void cmd_init() {
-	command = NULL;
+void cmd_init(struct cmd_data *data) {
+	data->command = NULL;
 	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
-		args[i] = NULL;
-		arg_pairs[i].key[0] = '\0';
-		arg_pairs[i].value[0] = '\0';
-		arg_pairs[i].value_int = 0;
-		arg_pairs[i].value_hex = 0x00;
-		arg_pairs[i].integer_is_converted = 0;
-		arg_pairs[i].hex_is_converted = 0;
-		arg_pairs[i].hex64_is_converted = 0;
-		args_used[i] = 0;
+		data->args[i] = NULL;
+		data->arg_pairs[i].key[0] = '\0';
+		data->arg_pairs[i].value[0] = '\0';
+		data->arg_pairs[i].value_int = 0;
+		data->arg_pairs[i].value_hex = 0x00;
+		data->arg_pairs[i].integer_is_converted = 0;
+		data->arg_pairs[i].hex_is_converted = 0;
+		data->arg_pairs[i].hex64_is_converted = 0;
+		data->args_used[i] = 0;
 	}
 }
 
-int cmd_check_all_args_used() {
+int cmd_check_all_args_used(struct cmd_data *data) {
 	int err = 0;
-	for (int i = 0; i < BDL_ARGUMENT_MAX && *args[i] != '\0'; i++) {
-		if (args_used[i] != 1) {
-			fprintf (stderr, "Error: Argument %i ('%s') was not used, possible junk or typo\n", i, args[i]);
+	for (int i = 0; i < BDL_ARGUMENT_MAX && *(data->args[i]) != '\0'; i++) {
+		if (data->args_used[i] != 1) {
+			fprintf (stderr, "Error: Argument %i ('%s') was not used, possible junk or typo\n", i, data->args[i]);
 			err = 1;
 		}
 	}
 	return err;
 }
 
-int cmd_get_value_index(const char *key) {
-	for (int i = 0; i < BDL_ARGUMENT_MAX && arg_pairs[i].key[0] != '\0'; i++) {
-		if (strcmp(arg_pairs[i].key, key) == 0) {
+int cmd_get_value_index(struct cmd_data *data, const char *key) {
+	for (int i = 0; i < BDL_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
+		if (strcmp(data->arg_pairs[i].key, key) == 0) {
 			return i;
 		}
 	}
@@ -90,93 +68,93 @@ int cmd_get_value_index(const char *key) {
 	return -1;
 }
 
-int cmd_convert_hex_byte(const char *key) {
-	int index = cmd_get_value_index(key);
+int cmd_convert_hex_byte(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
 	if (index == -1) {
 		return 1;
 	}
 
-	if (arg_pairs[index].hex_is_converted) {
+	if (data->arg_pairs[index].hex_is_converted) {
 		return 0;
 	}
 
 	char *err;
-	long int intermediate = strtol(arg_pairs[index].value, &err, 16);
+	long int intermediate = strtol(data->arg_pairs[index].value, &err, 16);
 
 	if (err[0] != '\0' || intermediate < 0 || intermediate > 0xff) {
 		return 1;
 	}
 
-	arg_pairs[index].value_hex = intermediate;
-	arg_pairs[index].hex_is_converted = 1;
+	data->arg_pairs[index].value_hex = intermediate;
+	data->arg_pairs[index].hex_is_converted = 1;
 
 	#ifdef BDL_DBG_CMDLINE
 
-	printf ("Converted argument with key '%s' to hex '%x'\n", key, arg_pairs[index].value_hex);
+	printf ("Converted argument with key '%s' to hex '%x'\n", key, data->arg_pairs[index].value_hex);
 
 	#endif
 
 	return 0;
 }
 
-int cmd_convert_hex_64(const char *key) {
-	int index = cmd_get_value_index(key);
+int cmd_convert_hex_64(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
 	if (index == -1) {
 		return 1;
 	}
 
-	if (arg_pairs[index].hex64_is_converted) {
+	if (data->arg_pairs[index].hex64_is_converted) {
 		return 0;
 	}
 
 	char *err;
-	uint64_t intermediate = strtoull(arg_pairs[index].value, &err, 16);
+	uint64_t intermediate = strtoull(data->arg_pairs[index].value, &err, 16);
 
 	if (err[0] != '\0') {
 		return 1;
 	}
 
-	arg_pairs[index].value_hex_64 = intermediate;
-	arg_pairs[index].hex64_is_converted = 1;
+	data->arg_pairs[index].value_hex_64 = intermediate;
+	data->arg_pairs[index].hex64_is_converted = 1;
 
 	#ifdef BDL_DBG_CMDLINE
 
-	printf ("Converted argument with key '%s' to hex64 '%" PRIx64 "'\n", key, arg_pairs[index].value_hex_64);
+	printf ("Converted argument with key '%s' to hex64 '%" PRIx64 "'\n", key, data->arg_pairs[index].value_hex_64);
 
 	#endif
 
 	return 0;
 }
-int cmd_convert_integer_10(const char *key) {
-	int index = cmd_get_value_index(key);
+int cmd_convert_integer_10(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
 	if (index == -1) {
 		return 1;
 	}
 
-	if (arg_pairs[index].integer_is_converted) {
+	if (data->arg_pairs[index].integer_is_converted) {
 		return 0;
 	}
 
 	char *err;
-	arg_pairs[index].value_int = strtol(arg_pairs[index].value, &err, 10);
+	data->arg_pairs[index].value_int = strtol(data->arg_pairs[index].value, &err, 10);
 
 	if (err[0] != '\0') {
 		return 1;
 	}
 
-	arg_pairs[index].integer_is_converted = 1;
+	data->arg_pairs[index].integer_is_converted = 1;
 
 	#ifdef BDL_DBG_CMDLINE
 
-	printf ("Converted argument with key '%s' to integer '%ld'\n", key, arg_pairs[index].value_int);
+	printf ("Converted argument with key '%s' to integer '%ld'\n", key, data->arg_pairs[index].value_int);
 
 	#endif
 
 	return 0;
 }
 
-char cmd_get_hex_byte(const char *key) {
-	int index = cmd_get_value_index(key);
+char cmd_get_hex_byte(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
 
 	if (index == -1) {
 		fprintf(stderr, "Bug: Called cmd_get_hex with unknown key '%s'\n", key);
@@ -184,19 +162,19 @@ char cmd_get_hex_byte(const char *key) {
 	}
 
 	#ifdef BDL_DBG_CMDLINE
-	if (arg_pairs[index].hex_is_converted != 1) {
+	if (data->arg_pairs[index].hex_is_converted != 1) {
 		fprintf(stderr, "Bug: Called cmd_get_hex without cmd_convert_hex being called first\n");
 		exit (EXIT_FAILURE);
 	}
 	#endif
 
-	args_used[index] = 1;
+	data->args_used[index] = 1;
 
-	return arg_pairs[index].value_hex;
+	return data->arg_pairs[index].value_hex;
 }
 
-uint64_t cmd_get_hex_64(const char *key) {
-	int index = cmd_get_value_index(key);
+uint64_t cmd_get_hex_64(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
 
 	if (index == -1) {
 		fprintf(stderr, "Bug: Called cmd_get_hex_64 with unknown key '%s'\n", key);
@@ -204,19 +182,19 @@ uint64_t cmd_get_hex_64(const char *key) {
 	}
 
 	#ifdef BDL_DBG_CMDLINE
-	if (arg_pairs[index].hex64_is_converted != 1) {
+	if (data->arg_pairs[index].hex64_is_converted != 1) {
 		fprintf(stderr, "Bug: Called cmd_get_hex_64 without cmd_convert_hex_64 being called first\n");
 		exit (EXIT_FAILURE);
 	}
 	#endif
 
-	args_used[index] = 1;
+	data->args_used[index] = 1;
 
-	return arg_pairs[index].value_hex_64;
+	return data->arg_pairs[index].value_hex_64;
 }
 
-long int cmd_get_integer(const char *key) {
-	int index = cmd_get_value_index(key);
+long int cmd_get_integer(struct cmd_data *data, const char *key) {
+	int index = cmd_get_value_index(data, key);
 
 	if (index == -1) {
 		fprintf(stderr, "Bug: Called cmd_get_integer with unknown key '%s'\n", key);
@@ -224,103 +202,103 @@ long int cmd_get_integer(const char *key) {
 	}
 
 	#ifdef BDL_DBG_CMDLINE
-	if (arg_pairs[index].integer_is_converted != 1) {
+	if (data->arg_pairs[index].integer_is_converted != 1) {
 		fprintf(stderr, "Bug: Called cmd_get_integer without cmd_convert_integer being called first\n");
 		exit (EXIT_FAILURE);
 	}
 	#endif
 
-	args_used[index] = 1;
+	data->args_used[index] = 1;
 
-	return arg_pairs[index].value_int;
+	return data->arg_pairs[index].value_int;
 }
 
-const char *cmd_get_value(const char *key) {
-	for (int i = 0; i < BDL_ARGUMENT_MAX && arg_pairs[i].key[0] != '\0'; i++) {
-		if (strcmp(arg_pairs[i].key, key) == 0) {
+const char *cmd_get_value(struct cmd_data *data, const char *key) {
+	for (int i = 0; i < BDL_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
+		if (strcmp(data->arg_pairs[i].key, key) == 0) {
 			#ifdef BDL_DBG_CMDLINE
-			printf ("Retrieve string argument %s: %s\n", key, arg_pairs[i].value);
+			printf ("Retrieve string argument %s: %s\n", key, data->arg_pairs[i].value);
 			#endif
 
-			args_used[i] = 1;
-			return arg_pairs[i].value;
+			data->args_used[i] = 1;
+			return data->arg_pairs[i].value;
 		}
 	}
 
 	return NULL;
 }
 
-const char *cmd_get_argument(int index) {
-	if (index >= BDL_ARGUMENT_MAX || *args[index] == '\0') {
+const char *cmd_get_argument(struct cmd_data *data, int index) {
+	if (index >= BDL_ARGUMENT_MAX || *(data->args[index]) == '\0') {
 		return NULL;
 	}
-	args_used[index] = 1;
-	return args[index];
+	data->args_used[index] = 1;
+	return data->args[index];
 }
 
 /* Get last argument after already read arg=val pairs */
-const char *cmd_get_last_argument() {
+const char *cmd_get_last_argument(struct cmd_data *data) {
 	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
-		if (args_used[i] == 0 && args[i] != NULL && *args[i] != '\0') {
-			args_used[i] = 1;
-			return args[i];
+		if (data->args_used[i] == 0 && data->args[i] != NULL && *(data->args[i]) != '\0') {
+			data->args_used[i] = 1;
+			return data->args[i];
 		}
 	}
 	return NULL;
 }
 
-int cmd_parse(int argc, const char *argv[]) {
-	program = argv[0];
-	command = command_help;
+int cmd_parse(struct cmd_data *data, int argc, const char *argv[]) {
+	data->program = argv[0];
+	data->command = command_help;
 
-	cmd_init();
+	cmd_init(data);
 
 	if (argc <= 1) {
 		return 0;
 	}
 
-	command = argv[1];
+	data->command = argv[1];
 
 	// Initialize all to empty strings
 	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
-		args[i] = blank_argument;
+		data->args[i] = cmd_blank_argument;
 	}
 
 	// Store pointers to all arguments
 	int arg_pos = 2;
 	for (int i = 0; i < BDL_ARGUMENT_MAX && arg_pos < argc; i++) {
-		args[i] = argv[arg_pos];
+		data->args[i] = argv[arg_pos];
 		arg_pos++;
 	}
 
 	// Parse key-value pairs separated by =
 	int pairs_pos = 0;
-	for (int i = 0; i < BDL_ARGUMENT_MAX && args[i] != NULL; i++) {
+	for (int i = 0; i < BDL_ARGUMENT_MAX && data->args[i] != NULL; i++) {
 			const char *pos;
-			if ((pos = strstr(args[i], "=")) != NULL) {
+			if ((pos = strstr(data->args[i], "=")) != NULL) {
 				const char *value = pos + 1;
-				int key_length = pos - args[i];
+				int key_length = pos - data->args[i];
 				int value_length = strlen(value);
 
 				if (key_length == 0 || value_length == 0) {
-					fprintf (stderr, "Error: Syntax error with = syntax in argument %i ('%s'), use key=value\n", i, args[i]);
+					fprintf (stderr, "Error: Syntax error with = syntax in argument %i ('%s'), use key=value\n", i, data->args[i]);
 					return 1;
 				}
 
 				if (key_length > BDL_ARGUMENT_SIZE - 1) {
-					fprintf (stderr, "Error: Argument key %i too long ('%s'), maximum size is %i\n", i, args[i], BDL_ARGUMENT_SIZE - 1);
+					fprintf (stderr, "Error: Argument key %i too long ('%s'), maximum size is %i\n", i, data->args[i], BDL_ARGUMENT_SIZE - 1);
 					return 1;
 				}
 				if (value_length > BDL_ARGUMENT_SIZE - 1) {
-					fprintf (stderr, "Error: Argument value %i too long ('%s'), maximum size is %i\n", i, args[i], BDL_ARGUMENT_SIZE - 1);
+					fprintf (stderr, "Error: Argument value %i too long ('%s'), maximum size is %i\n", i, data->args[i], BDL_ARGUMENT_SIZE - 1);
 					return 1;
 				}
 
-				strncpy(arg_pairs[pairs_pos].key, args[i], key_length);
-				arg_pairs[pairs_pos].key[key_length] = '\0';
+				strncpy(data->arg_pairs[pairs_pos].key, data->args[i], key_length);
+				data->arg_pairs[pairs_pos].key[key_length] = '\0';
 
-				strncpy(arg_pairs[pairs_pos].value, value, value_length);
-				arg_pairs[pairs_pos].value[value_length] = '\0';
+				strncpy(data->arg_pairs[pairs_pos].value, value, value_length);
+				data->arg_pairs[pairs_pos].value[value_length] = '\0';
 
 				pairs_pos++;
 			}
@@ -328,16 +306,16 @@ int cmd_parse(int argc, const char *argv[]) {
 
 	#ifdef BDL_DBG_CMDLINE
 
-	printf ("Program: %s\n", program);
-	printf ("Command: %s\n", command);
+	printf ("Program: %s\n", data->program);
+	printf ("Command: %s\n", data->command);
 
-	for (int i = 0; i < BDL_ARGUMENT_MAX && args[i] != NULL; i++) {
-		printf ("Argument %i: %s\n", i, args[i]);
+	for (int i = 0; i < BDL_ARGUMENT_MAX && data->args[i] != NULL; i++) {
+		printf ("Argument %i: %s\n", i, data->args[i]);
 	}
 
-	for (int i = 0; i < BDL_ARGUMENT_MAX && arg_pairs[i].key[0] != '\0'; i++) {
-		printf ("Argument %i key: %s\n", i, arg_pairs[i].key);
-		printf ("Argument %i value: %s\n", i, arg_pairs[i].value);
+	for (int i = 0; i < BDL_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
+		printf ("Argument %i key: %s\n", i, data->arg_pairs[i].key);
+		printf ("Argument %i value: %s\n", i, data->arg_pairs[i].value);
 	}
 
 	#endif
@@ -345,7 +323,7 @@ int cmd_parse(int argc, const char *argv[]) {
 	return 0;
 }
 
-int cmd_match(const char *test) {
-	return strcmp(command, test) == 0;
+int cmd_match(struct cmd_data *data, const char *test) {
+	return strcmp(data->command, test) == 0;
 }
 
