@@ -37,23 +37,23 @@ void help() {
 }
 
 int interpret_command (struct session *session, int argc, const char *argv[]) {
-	if (cmd_parse(argc, argv) != 0) {
+	if (cmd_parse(&session->cmd_data, argc, argv) != 0) {
 		return 1;
 	}
 
-	if (argc == 1 || cmd_match("help")) {
+	if (argc == 1 || cmd_match(&session->cmd_data, "help")) {
 		help();
 	}
-	else if (cmd_match("open")) {
+	else if (cmd_match(&session->cmd_data, "open")) {
 		// Start a session, and write commands line by line (from STDIN)
-		const char *device_path = cmd_get_value("dev");
+		const char *device_path = cmd_get_value(&session->cmd_data, "dev");
 
 		if (device_path == NULL) {
 			fprintf(stderr, "Error: Device argument was missing for open command, use 'open dev=DEVICE'\n");
 			return 1;
 		}
 
-		if (cmd_check_all_args_used()) {
+		if (cmd_check_all_args_used(&session->cmd_data)) {
 			return 1;
 		}
 
@@ -67,7 +67,7 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			return 1;
 		}
 	}
-	else if (cmd_match("close")) {
+	else if (cmd_match(&session->cmd_data, "close")) {
 		if (session->usercount == 0) {
 			fprintf (stderr, "Attempted to close while no device was open\n");
 			return 1;
@@ -76,37 +76,47 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		close_session(session);
 
 	}
-	else if (cmd_match("validate")) {
-		const char *device_string = cmd_get_value("dev");
+	else if (cmd_match(&session->cmd_data, "validate")) {
+		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
+
+
+		if (cmd_check_all_args_used(&session->cmd_data)) {
+			return 1;
+		}
 
 		if (start_session (session, device_string) != 0) {
 			fprintf (stderr, "Could not start session for validate command\n");
 			return 1;
 		}
 
-		if (cmd_check_all_args_used()) {
-			return 1;
-		}
-
-		if (validate_dev(device_string, &session->device) != 0) {
+		int result;
+		if (validate_dev(&session->device, &result) != 0) {
+			fprintf (stderr, "Error while validating device\n");
 			close_session(session);
 			return 1;
 		}
 
+		if (result == 0) {
+			printf ("Device was valid\n");
+		}
+		else {
+			printf ("Device was not valid, must be initialized\n");
+		}
+
 		close_session(session);
 	}
-	else if (cmd_match("read")) {
-		const char *device_string = cmd_get_value("dev");
-		const char *timestamp_gteq_string = cmd_get_value("ts_gteq");
+	else if (cmd_match(&session->cmd_data, "read")) {
+		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
+		const char *timestamp_gteq_string = cmd_get_value(&session->cmd_data, "ts_gteq");
 
 		long int timestamp_gteq = 0;
 
 		if (timestamp_gteq_string != NULL) {
-			if (cmd_convert_integer_10("ts_gteq")) {
+			if (cmd_convert_integer_10(&session->cmd_data, "ts_gteq")) {
 				fprintf(stderr, "Error: Could not interpret timestamp greater or equal argument, use ts_gteq=POSITIVE INTEGER\n");
 				return 1;
 			}
-			timestamp_gteq = cmd_get_integer("ts_gteq");
+			timestamp_gteq = cmd_get_integer(&session->cmd_data, "ts_gteq");
 			if (timestamp_gteq < 0) {
 				fprintf(stderr, "Error: Timestamp greater or equal argument must be zero or greater, %lu was gives\n", timestamp_gteq);
 				return 1;
@@ -120,10 +130,10 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		close_session(session);
 	}
-	else if (cmd_match("write")) {
-		const char *device_string = cmd_get_value("dev");
-		const char *appdata_string = cmd_get_value("appdata");
-		const char *data = cmd_get_last_argument();
+	else if (cmd_match(&session->cmd_data, "write")) {
+		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
+		const char *appdata_string = cmd_get_value(&session->cmd_data, "appdata");
+		const char *data = cmd_get_last_argument(&session->cmd_data);
 
 		uint64_t appdata = 0;
 
@@ -132,16 +142,16 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			return 1;
 		}
 		if (appdata_string != NULL) {
-			if (cmd_convert_hex_64("appdata")) {
+			if (cmd_convert_hex_64(&session->cmd_data, "appdata")) {
 				fprintf(stderr, "Error: Could not interpret pad charachter argument, use padchar=HEXNUMBER 1 BYTE\n");
 				return 1;
 			}
 
-			appdata = cmd_get_hex_64("appdata");
+			appdata = cmd_get_hex_64(&session->cmd_data, "appdata");
 		}
 
 		// Check that the user hasn't specified anything funny at the command line
-		if (cmd_check_all_args_used()) {
+		if (cmd_check_all_args_used(&session->cmd_data)) {
 			return 1;
 		}
 
@@ -157,11 +167,11 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		close_session(session);
 	}
-	else if (cmd_match("init")) {
-		const char *device_string = cmd_get_value("dev");
-		const char *bs_string = cmd_get_value("bs");
-		const char *hpad_string = cmd_get_value("hpad");
-		const char *padchar_string = cmd_get_value("padchar");
+	else if (cmd_match(&session->cmd_data, "init")) {
+		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
+		const char *bs_string = cmd_get_value(&session->cmd_data, "bs");
+		const char *hpad_string = cmd_get_value(&session->cmd_data, "hpad");
+		const char *padchar_string = cmd_get_value(&session->cmd_data, "padchar");
 
 		long int blocksize = BDL_DEFAULT_BLOCKSIZE;
 		long int header_pad = BDL_DEFAULT_HEADER_PAD;
@@ -170,12 +180,12 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		// Parse block size argument
 		if (bs_string != NULL) {
-			if (cmd_convert_integer_10("bs")) {
+			if (cmd_convert_integer_10(&session->cmd_data, "bs")) {
 				fprintf(stderr, "Error: Could not interpret block size argument, use bs=NUMBER\n");
 				return 1;
 			}
 
-			blocksize = cmd_get_integer("bs");
+			blocksize = cmd_get_integer(&session->cmd_data, "bs");
 
 			if (blocksize > BDL_MAXIMUM_BLOCKSIZE) {
 				fprintf(stderr, "Error: Blocksize was too large, maximum is %i\n", BDL_MAXIMUM_BLOCKSIZE);
@@ -193,12 +203,12 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		// Parse header pad argument
 		if (hpad_string != NULL) {
-			if (cmd_convert_integer_10("hpad")) {
+			if (cmd_convert_integer_10(&session->cmd_data, "hpad")) {
 				fprintf(stderr, "Error: Could not interpret header pad size argument, use hpad=NUMBER\n");
 				return 1;
 			}
 
-			header_pad = cmd_get_integer("hpad");
+			header_pad = cmd_get_integer(&session->cmd_data, "hpad");
 
 			if (header_pad < BDL_MINIMUM_HEADER_PAD) {
 				fprintf(stderr, "Error: Header pad was too small, minimum is %i\n", BDL_MINIMUM_HEADER_PAD);
@@ -212,16 +222,16 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		// Parse pad characher argument
 		if (padchar_string != NULL) {
-			if (cmd_convert_hex_byte("padchar")) {
+			if (cmd_convert_hex_byte(&session->cmd_data, "padchar")) {
 				fprintf(stderr, "Error: Could not interpret pad charachter argument, use padchar=HEXNUMBER 1 BYTE\n");
 				return 1;
 			}
 
-			padchar = cmd_get_hex_byte("padchar");
+			padchar = cmd_get_hex_byte(&session->cmd_data, "padchar");
 		}
 
 		// Check that the user hasn't specified anything funny at the command line
-		if (cmd_check_all_args_used()) {
+		if (cmd_check_all_args_used(&session->cmd_data)) {
 			return 1;
 		}
 

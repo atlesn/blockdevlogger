@@ -133,6 +133,6 @@ int block_loop_hintblocks_large_device(
 		struct bdl_block_location *location,
 		int *result
 );
-int block_get_master_header(struct io_file *file, struct bdl_header *header, int *result);
+int block_get_valid_master_header(struct io_file *file, struct bdl_header *header, int *result);
 
 #endif

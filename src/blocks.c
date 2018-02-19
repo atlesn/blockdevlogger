@@ -200,7 +200,7 @@ int block_loop_hintblocks_large_device (
 	return 0;
 }
 
-int block_get_master_header(struct io_file *file, struct bdl_header *header, int *result) {
+int block_get_valid_master_header(struct io_file *file, struct bdl_header *header, int *result) {
 	if (io_read_block(file, 0, (char *) header, sizeof(*header)) != 0) {
 		fprintf (stderr, "Error while reading header from file\n");
 		return 1;

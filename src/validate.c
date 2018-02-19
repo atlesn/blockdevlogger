@@ -138,38 +138,20 @@ int validate_header (const struct bdl_header *header, int file_size, int *result
 	return 0;
 }
 
-int validate_dev (const char *device_path, struct io_file *session_file) {
+int validate_dev (struct io_file *session_file, int *result) {
 	struct io_file local_file;
 	struct io_file *file;
 
-	if (device_path != NULL) {
-		file = &local_file;
-		if (io_open(device_path, file) != 0) {
-			fprintf (stderr, "Error while opening %s while validating data\n", device_path);
-			return 1;
-		}
-	}
-	else {
-		file = session_file;
-	}
-
 	struct bdl_header header;
-	int result;
 
-	if (block_get_master_header(file, &header, &result) != 0) {
-		fprintf (stderr, "Could not get header from device %s while writing new data block\n", device_path);
-		goto out_error;
+	if (block_get_valid_master_header(file, &header, result) != 0) {
+		fprintf (stderr, "Could not get header from device while writing new data block\n");
+		return 1;
 	}
 
-	success:
-	if (device_path != NULL) {
-		io_close(file);
+	if (*result != 0) {
+		return 0;
 	}
+
 	return 0;
-
-	out_error:
-	if (device_path != NULL) {
-		io_close(file);
-	}
-	return 1;
 }

@@ -26,8 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "defaults.h"
 
-const char *command_help = "help";
-
 #define BDL_ARGUMENT_MAX BDL_MAXIMUM_CMDLINE_ARGS
 #define BDL_ARGUMENT_SIZE BDL_MAXIMUM_CMDLINE_ARG_SIZE
 

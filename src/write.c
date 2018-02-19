@@ -347,7 +347,7 @@ int write_put_data(struct io_file *session_file, const char *data, int data_leng
 	struct bdl_header header;
 	int result;
 
-	if (block_get_master_header(session_file, &header, &result) != 0) {
+	if (block_get_valid_master_header(session_file, &header, &result) != 0) {
 		fprintf (stderr, "Could not get header from device while writing new data block\n");
 		return 1;
 	}

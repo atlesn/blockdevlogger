@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //#define BDL_DBG_CMDLINE
 
 static const char *cmd_blank_argument = "";
+static const char *cmd_help = "help";
 
 void cmd_init(struct cmd_data *data) {
 	data->command = NULL;
@@ -249,7 +250,7 @@ const char *cmd_get_last_argument(struct cmd_data *data) {
 
 int cmd_parse(struct cmd_data *data, int argc, const char *argv[]) {
 	data->program = argv[0];
-	data->command = command_help;
+	data->command = cmd_help;
 
 	cmd_init(data);
 
