@@ -136,7 +136,7 @@ struct read_smallest_hintblock_loop_data {
 	struct bdl_hintblock_state smallest_state;
 };
 
-int read_find_smallest_hintblock_loop_callback (
+int read_find_oldest_hintblock_loop_callback (
 		struct bdl_hintblock_loop_callback_data *data,
 		int *result
 ) {
@@ -183,7 +183,7 @@ int read_find_oldest_hintblock (
 
 	if (block_loop_hintblocks_large_device (
 			device, master_header, NULL,
-			read_find_smallest_hintblock_loop_callback, &callback_data,
+			read_find_oldest_hintblock_loop_callback, &callback_data,
 			location,
 			result
 	) != 0) {

@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "validate.h"
 #include "bdltime.h"
 
-#define BDL_DBG_WRITE
+//#define BDL_DBG_WRITE
 
 int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;

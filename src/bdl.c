@@ -165,6 +165,10 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			limit = limit_tmp;
 		}
 
+		if (cmd_check_all_args_used(&session->cmd_data)) {
+			return 1;
+		}
+
 		if (start_session (session, device_string) != 0) {
 			fprintf (stderr, "Could not start session for read command\n");
 			return 1;

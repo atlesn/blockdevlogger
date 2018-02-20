@@ -281,7 +281,7 @@ int block_loop_hintblocks_large_device (
 	}
 
 	// Check if we skipped the beginning initially and need to loop again
-	if (loop_begin != loop_begin_orig) {
+	if (loop_begin != loop_begin_orig && *result != BDL_BLOCK_LOOP_BREAK) {
 		loop_end = loop_begin;
 		loop_begin = loop_begin_orig;
 
