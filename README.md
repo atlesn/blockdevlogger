@@ -22,7 +22,8 @@ The data blocks have a timestamp and a user defined identifier. When
 writing a new entry, BDL searches the hint blocks to find unused
 space. If the device was full, the oldest data block is overwritten,
 and the rest of this region is also invalidated. The hint blocks are
-always updated on writes.
+always updated on writes. Timestamp of new entries must be larger than
+all exisiting entries.
 
 ## INITIALIZATION
 
@@ -73,7 +74,7 @@ Read blocks and print to STDOUT.
 
 ```
 ts_gteq		Specifiy a minimum timestamp of blocks to print. Default is 0.
-limit		Stop after this many entries are found.
+limit		Stop after this many entries are found. 0 means no limit (default).
 ```
 
 ### bdl open dev={DEVICE} *

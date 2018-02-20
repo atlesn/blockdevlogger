@@ -141,6 +141,7 @@ int block_get_valid_hintblock (
 int block_loop_hintblocks_large_device (
 	struct io_file *file,
 	const struct bdl_header *header,
+	const struct bdl_block_location *first_location,
 	int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
 	struct bdl_hintblock_loop_callback_data *callback_data,
 	struct bdl_block_location *location,
@@ -161,6 +162,6 @@ int block_loop_blocks (
 	int *result
 );
 int block_get_validate_master_header(struct io_file *file, struct bdl_header *header, int *result);
-void block_dump (const struct bdl_block_header *header, const char *data);
+void block_dump (const struct bdl_block_header *header, unsigned long int position, const char *data);
 
 #endif

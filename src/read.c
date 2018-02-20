@@ -22,32 +22,44 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "io.h"
 #include "blocks.h"
 
 struct read_block_loop_data {
 	uint64_t timestamp_gteq;
+	unsigned long int limit;
+	unsigned long int result_count;
 };
 
-// #define BDL_READ_DEBUG
+//#define BDL_READ_DEBUG
 
 int read_block_loop_callback(struct bdl_block_loop_callback_data *data, int *result) {
-	const struct read_block_loop_data *loop_data = (struct read_block_loop_data *) data->argument_ptr;
+	struct read_block_loop_data *loop_data = (struct read_block_loop_data *) data->argument_ptr;
 	const struct bdl_block_header *block_header = data->block;
 
 #ifdef BDL_READ_DEBUG
-	printf ("Check block at %lu\n", data->location->block_location);
+	printf ("Check block at %lu\n", data->block_position);
 #endif
 
 	if (block_header->timestamp >= loop_data->timestamp_gteq) {
-		block_dump(block_header, data->block_data);
+		block_dump(block_header, data->block_position, data->block_data);
+		loop_data->result_count++;
+	}
+
+	if (loop_data->limit != 0 && loop_data->result_count == loop_data->limit) {
+		*result = BDL_BLOCK_LOOP_BREAK;
 	}
 
 	return 0;
 }
 
-int read_hintblock_loop_callback(struct bdl_hintblock_loop_callback_data *data, int *result) {
+int read_hintblock_loop_callback(
+		struct bdl_hintblock_loop_callback_data *data,
+		int *result
+) {
 	struct read_block_loop_data *loop_data = (struct read_block_loop_data *) data->argument_ptr;
 	const struct bdl_hintblock_state *hintblock_state = &data->location->hintblock_state;
 	const struct bdl_header *master_header = data->master_header;
@@ -103,10 +115,87 @@ int read_hintblock_loop_callback(struct bdl_hintblock_loop_callback_data *data, 
 		return 1;
 	}
 
+	if (loop_data->limit != 0 && loop_data->result_count >= loop_data->limit) {
+		if (loop_data->result_count > loop_data->limit) {
+			fprintf (stderr, "Bug: Result limit exceeded\n");
+			exit (EXIT_FAILURE);
+		}
+#ifdef BDL_READ_DEBUG
+		printf ("- Limit reached, breaking out\n");
+#endif
+		*result = BDL_BLOCK_LOOP_BREAK;
+	}
+
 	return 0;
 }
 
-int read_blocks (struct io_file *device, uint64_t timestamp_gteq) {
+struct read_smallest_hintblock_loop_data {
+	uint64_t timestamp_gteq;
+	uint64_t smallest_timestamp;
+	struct bdl_hintblock_state smallest_state;
+};
+
+int read_find_smallest_hintblock_loop_callback (
+		struct bdl_hintblock_loop_callback_data *data,
+		int *result
+) {
+	struct read_smallest_hintblock_loop_data *loop_data = (struct read_smallest_hintblock_loop_data *) data->argument_ptr;
+	const struct bdl_hintblock_state *state = &data->location->hintblock_state;
+
+	if (state->valid != 1) {
+		#ifdef BDL_READ_DEBUG
+			printf ("- Hint block was not valid, ending here\n");
+		#endif
+		*result = BDL_BLOCK_LOOP_BREAK;
+		return 0;
+	}
+
+	if (state->highest_timestamp < loop_data->timestamp_gteq) {
+		*result = BDL_BLOCK_LOOP_OK;
+		return 0;
+	}
+
+	if (state->highest_timestamp < loop_data->smallest_timestamp) {
+		loop_data->smallest_timestamp = state->highest_timestamp;
+		loop_data->smallest_state = *state;
+	}
+
+	return 0;
+}
+
+int read_find_oldest_hintblock (
+		struct io_file *device,
+		const struct bdl_header *master_header,
+		uint64_t timestamp_gteq,
+		struct bdl_block_location *location,
+		int *result
+) {
+	struct read_smallest_hintblock_loop_data loop_data;
+
+	loop_data.timestamp_gteq = timestamp_gteq;
+	memset (&loop_data.smallest_state, '\0', sizeof(loop_data.smallest_state));
+	loop_data.smallest_timestamp = 0xffffffffffffffff;
+
+	struct bdl_hintblock_loop_callback_data callback_data;
+	callback_data.argument_int = 0;
+	callback_data.argument_ptr = (void*) &loop_data;
+
+	if (block_loop_hintblocks_large_device (
+			device, master_header, NULL,
+			read_find_smallest_hintblock_loop_callback, &callback_data,
+			location,
+			result
+	) != 0) {
+		fprintf (stderr, "Error while looping hintblocks while reading blocks\n");
+		return 1;
+	}
+
+	location->hintblock_state = loop_data.smallest_state;
+
+	return 0;
+}
+
+int read_blocks (struct io_file *device, uint64_t timestamp_gteq, unsigned long int limit) {
 	struct bdl_header master_header;
 	int result;
 
@@ -120,17 +209,44 @@ int read_blocks (struct io_file *device, uint64_t timestamp_gteq) {
 		return 1;
 	}
 
+	// Find oldest hint block
+	struct bdl_block_location oldest_location;
+	if (read_find_oldest_hintblock(device, &master_header, timestamp_gteq, &oldest_location, &result) != 0) {
+		fprintf (stderr, "Error while finding oldest hint block\n");
+		return 1;
+	}
+
+#ifdef BDL_READ_DEBUG
+	if (oldest_location.hintblock_state.valid == 1) {
+		printf ("Found oldest hintblock at %lu highest timestamp %" PRIu64 "\n",
+				oldest_location.hintblock_state.location, oldest_location.hintblock_state.highest_timestamp
+		);
+	}
+	else {
+		printf ("No hintblocks found\n");
+	}
+#endif
+
+	// Check if no blocks were found
+	if (oldest_location.hintblock_state.valid != 1) {
+		return 0;
+	}
+
+	// Read data
 	struct read_block_loop_data loop_data;
 	loop_data.timestamp_gteq = timestamp_gteq;
+	loop_data.limit = limit;
+	loop_data.result_count = 0;
 
 	struct bdl_hintblock_loop_callback_data callback_data;
-	struct bdl_block_location location;
-
 	callback_data.argument_int = 0;
 	callback_data.argument_ptr = (void *) &loop_data;
 
+	struct bdl_block_location location;
+
 	if (block_loop_hintblocks_large_device (
 			device, &master_header,
+			&oldest_location,
 			read_hintblock_loop_callback, &callback_data,
 			&location,
 			&result

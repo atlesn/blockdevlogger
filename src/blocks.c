@@ -109,10 +109,8 @@ int block_get_valid_hintblock (
 		return 1;
 	}
 
-	struct bdl_hint_block hintblock_copy = *hintblock;
-
 	int hash_return;
-	if (validate_hint (&hintblock_copy, master_header, result) != 0) {
+	if (validate_hint (hintblock, master_header, result) != 0) {
 		fprintf (stderr, "Error while checking hash for hint block at %lu\n", pos);
 		return 1;
 	}
@@ -172,36 +170,33 @@ int block_get_hintblock_state (
 	return 0;
 }
 
-int block_loop_hintblocks_large_device (
+int block_loop_hintblocks_worker (
 		struct io_file *file,
 		const struct bdl_header *header,
+		unsigned long int loop_begin,
+		unsigned long int loop_end,
+		unsigned long int loop_spacing,
+		struct bdl_block_location *location,
 		int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
 		struct bdl_hintblock_loop_callback_data *callback_data,
-		struct bdl_block_location *location,
 		int *result
 ) {
-	*result = BDL_BLOCK_LOOP_OK;
+	if (loop_end > file->size) {
+		fprintf (stderr, "Bug: Attempted to loop hintblocks beyond file scope\n");
+		exit (EXIT_FAILURE);
+	}
 
-	memset (location, '\0', sizeof(*location));
+	// First block of a region (just after header or previous hint block)
+	unsigned long int blockstart_min = loop_begin - loop_spacing + header->block_size;
 
-	// Search for hint blocks
-	callback_data->file = file;
-	callback_data->master_header = header;
-	callback_data->location = location;
-	callback_data->hintblock_position = 0;
-	callback_data->blockstart_min = 0;
-	callback_data->blockstart_max = 0;
-
-	unsigned long int device_size = file->size;
-	unsigned long int header_size = header->header_size;
-
-	unsigned long int blockstart_min = header_size;
-
-	unsigned long int loop_begin = header_size + BDL_DEFAULT_HINT_BLOCK_SPACING;
-	unsigned long int loop_spacing = BDL_DEFAULT_HINT_BLOCK_SPACING;
-
-	for (unsigned long int i = loop_begin; i < device_size; i += loop_spacing) {
+	for (unsigned long int i = loop_begin; i < loop_end; i += loop_spacing) {
+		// Last block of this region (right before hint block)
 		unsigned long int blockstart_max = i - header->block_size;
+
+		if (blockstart_min < header->header_size) {
+			fprintf (stderr, "Bug: blockstart_min was less than header size int hintblock loop worker\n");
+			exit (EXIT_FAILURE);
+		}
 
 		if (block_get_hintblock_state (
 				file, i, header,
@@ -231,6 +226,75 @@ int block_loop_hintblocks_large_device (
 		}
 
 		blockstart_min = i + header->block_size;
+	}
+
+	return 0;
+}
+
+int block_loop_hintblocks_large_device (
+		struct io_file *file,
+		const struct bdl_header *header,
+		const struct bdl_block_location *first_location,
+		int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
+		struct bdl_hintblock_loop_callback_data *callback_data,
+		struct bdl_block_location *location,
+		int *result
+) {
+	*result = BDL_BLOCK_LOOP_OK;
+
+	memset (location, '\0', sizeof(*location));
+
+	// Search for hint blocks
+	callback_data->file = file;
+	callback_data->master_header = header;
+	callback_data->location = location;
+	callback_data->hintblock_position = 0;
+	callback_data->blockstart_min = 0;
+	callback_data->blockstart_max = 0;
+
+	unsigned long int device_size = file->size;
+	unsigned long int header_size = header->header_size;
+
+	unsigned long int loop_begin_orig = header_size + BDL_DEFAULT_HINTBLOCK_SPACING;
+	unsigned long int loop_begin = loop_begin_orig;
+	unsigned long int loop_spacing = BDL_DEFAULT_HINTBLOCK_SPACING;
+	unsigned long int loop_end = device_size;
+
+	// Override where we begin to search?
+	if (first_location != NULL) {
+		if (first_location->hintblock_state.valid != 1) {
+			fprintf (stderr, "Bug: Called block_loop_hintblocks_large_device with invalid first block set\n");
+			exit (EXIT_FAILURE);
+		}
+		loop_begin = first_location->hintblock_state.location;
+	}
+
+	if (block_loop_hintblocks_worker (
+			file, header,
+			loop_begin, loop_end, loop_spacing,
+			location,
+			callback, callback_data,
+			result
+	) != 0) {
+		fprintf (stderr, "Error while looping hint blocks 1st round\n");
+		return 1;
+	}
+
+	// Check if we skipped the beginning initially and need to loop again
+	if (loop_begin != loop_begin_orig) {
+		loop_end = loop_begin;
+		loop_begin = loop_begin_orig;
+
+		if (block_loop_hintblocks_worker (
+				file, header,
+				loop_begin, loop_end, loop_spacing,
+				location,
+				callback, callback_data,
+				result
+		) != 0) {
+			fprintf (stderr, "Error while looping hint blocks 2nd round\n");
+			return 1;
+		}
 	}
 
 	// TODO: Code for hint block at the very end
@@ -282,6 +346,11 @@ int block_loop_blocks (
 			return 1;
 		}
 
+		if (*result == 1) {
+			*result = BDL_BLOCK_LOOP_BREAK;
+			return 0;
+		}
+
 		callback_data->block_position = i;
 		callback_data->block = *block_header;
 		callback_data->block_data = *block_data;
@@ -316,11 +385,12 @@ int block_get_validate_master_header(struct io_file *file, struct bdl_header *he
 	return 0;
 }
 
-void block_dump (const struct bdl_block_header *header, const char *data) {
+void block_dump (const struct bdl_block_header *header, unsigned long int position, const char *data) {
 	char buf[1024 + header->data_length];
 
 	int bytes = snprintf (buf, 1024,
-			"BLOCK:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu32 ":%" PRIu32 ":",
+			"BLOCK:%lu:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu32 ":%" PRIu32 ":",
+			position,
 			header->timestamp,
 			header->application_data,
 			header->data_length,

@@ -54,7 +54,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 /* Default hint block spacing is 128MB, one is also placed at the very end */
-#define BDL_DEFAULT_HINT_BLOCK_SPACING (128 * 1024 * 1024)
+#define BDL_DEFAULT_HINTBLOCK_SPACING (128 * 1024 * 1024)
 
 /* For devices smaller than 256MB, use up to four blocks plus one at the end */
 #define BDL_SMALL_SIZE_THRESHOLD (256 * 1024 * 1024)

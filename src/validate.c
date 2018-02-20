@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <stdint.h>
 #include <inttypes.h>
-
+#include <string.h>
 
 #include "defaults.h"
 #include "io.h"
@@ -31,18 +31,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "crypt.h"
 
 int validate_block(const char *all_data, const struct bdl_header *master_header, int *result) {
-	struct bdl_block_header *header = (struct bdl_block_header *) all_data;
+	const struct bdl_block_header *header = (struct bdl_block_header *) all_data;
 
-	if (header->data_length > master_header->block_size - sizeof(header)) {
-		return 1;
+	unsigned long int total_size = sizeof(*header) + header->data_length;
+
+	if (total_size > master_header->block_size) {
+		*result = 1;
+		return 0;
 	}
 
 	uint32_t hash_orig = header->hash;
-	header->hash = 0;
+
+	char buf[total_size];
+	memcpy (buf, all_data, total_size);
+	struct bdl_block_header *header_copy = (struct bdl_block_header *) buf;
+	header_copy->hash = 0;
 
 	if (crypt_check_hash(
-			all_data,
-			sizeof(*header) + header->data_length,
+			buf,
+			total_size,
 			master_header->default_hash_algorithm,
 			hash_orig,
 			result) != 0
@@ -50,8 +57,6 @@ int validate_block(const char *all_data, const struct bdl_header *master_header,
 		fprintf (stderr, "Error while checking hash for block\n");
 		return 1;
 	}
-
-	header->hash = hash_orig;
 
 	return 0;
 }

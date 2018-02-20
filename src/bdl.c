@@ -109,8 +109,10 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 	else if (cmd_match(&session->cmd_data, "read")) {
 		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
 		const char *timestamp_gteq_string = cmd_get_value(&session->cmd_data, "ts_gteq");
+		const char *limit_string = cmd_get_value(&session->cmd_data, "limit");
 
 		uint64_t timestamp_gteq = 0;
+		unsigned long int limit = 0;
 
 		if (timestamp_gteq_string != NULL) {
 			if (cmd_convert_uint64_10(&session->cmd_data, "ts_gteq")) {
@@ -118,10 +120,20 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 				return 1;
 			}
 			timestamp_gteq = cmd_get_uint64(&session->cmd_data, "ts_gteq");
-			if (timestamp_gteq < 0) {
-				fprintf(stderr, "Error: Timestamp greater or equal argument must be zero or greater, %lu was gives\n", timestamp_gteq);
+		}
+		if (limit_string != NULL) {
+			if (cmd_convert_integer_10 (&session->cmd_data, "limit") != 0) {
+				fprintf (stderr, "Error: Could not interpret limit argument, use limit=POSITIVE INTEGER\n");
 				return 1;
 			}
+
+			long int limit_tmp = cmd_get_integer(&session->cmd_data, "limit");
+			if (limit_tmp < 0) {
+				fprintf (stderr, "Error: Limit argument was less than zero\n");
+				return 1;
+			}
+
+			limit = limit_tmp;
 		}
 
 		if (start_session (session, device_string) != 0) {
@@ -129,7 +141,7 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			return 1;
 		}
 
-		if (read_blocks(&session->device, timestamp_gteq) != 0) {
+		if (read_blocks(&session->device, timestamp_gteq, limit) != 0) {
 			fprintf (stderr, "Error while reading blocks\n");
 			close_session(session);
 			return 1;
@@ -216,7 +228,6 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		long int blocksize = BDL_DEFAULT_BLOCKSIZE;
 		long int header_pad = BDL_DEFAULT_HEADER_PAD;
 		char padchar = BDL_DEFAULT_PAD_CHAR;
-
 
 		// Parse block size argument
 		if (bs_string != NULL) {
@@ -305,7 +316,9 @@ int main_loop(struct session *session, const char *program_name) {
 
 		argv_new[argc_new++] = program_name;
 
-		fprintf (stderr, "Accepting commands delimeted by LF, CR or NULL\n");
+/*		fflush(stderr);
+		fflush(stdout);
+		printf ("Accepting commands delimeted by LF, CR or NULL\n");*/
 
 		int first = 1;
 		int i;

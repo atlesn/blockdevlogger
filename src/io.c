@@ -219,6 +219,9 @@ int io_write_block(
 		const char *padding, unsigned long int padding_length,
 		int verbose
 ) {
+#ifdef BDL_DEBUG_IO
+	printf ("Write block to pos %lu total size %lu\n", position, data_length+padding_length);
+#endif
 	// Write data
 	if (io_seek (file, position) != 0) {
 		fprintf (stderr, "Seek failed while writing block to position %lu\n", position);

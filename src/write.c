@@ -33,6 +33,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "validate.h"
 #include "bdltime.h"
 
+//#define BDL_DBG_WRITE
+
 int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;
 
@@ -151,10 +153,9 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 	// Attempt to find a hint block with free room
 	int result;
 	if (block_loop_hintblocks_large_device (
-			file,
-			header,
-			write_hintblock_check_free_callback,
-			&callback_data,
+			file, header,
+			NULL,
+			write_hintblock_check_free_callback, &callback_data,
 			location,
 			&result
 	) != 0) {
@@ -172,13 +173,13 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 	timestamp.initialized = 0;
 	timestamp.min_timestamp = 0xffffffffffffffff;
 
+	memset (&callback_data, '\0', sizeof(callback_data));
 	callback_data.argument_ptr = &timestamp;
 
 	if (block_loop_hintblocks_large_device (
-			file,
-			header,
-			write_hintblock_check_timestamps,
-			&callback_data,
+			file, header,
+			NULL,
+			write_hintblock_check_timestamps, &callback_data,
 			location,
 			&result
 	) != 0) {
@@ -188,6 +189,7 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 
 	if (timestamp.initialized == 1) {
 		location->block_location = timestamp.state.blockstart_min;
+		location->hintblock_state = timestamp.state;
 		return 0;
 	}
 
@@ -286,7 +288,7 @@ int write_put_block (
 	}
 
 #ifdef BDL_DBG_WRITE
-	printf ("Writing new block at location %lu with hintblock at %lu\n", location.block_location, location.hintblock_location);
+	printf ("Writing new block at location %lu with hintblock at %lu\n", location.block_location, location.hintblock_state.location);
 #endif
 
 	// Work on data block

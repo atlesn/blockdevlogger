@@ -26,6 +26,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "io.h"
 
-int read_blocks (struct io_file *device, uint64_t timestamp_gteq);
+int read_blocks (struct io_file *device, uint64_t timestamp_gteq, unsigned long int limit);
 
 #endif
