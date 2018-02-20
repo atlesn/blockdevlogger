@@ -177,21 +177,21 @@ int block_loop_hintblocks_large_device (
 		const struct bdl_header *header,
 		int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
 		struct bdl_hintblock_loop_callback_data *callback_data,
-		struct bdl_hintblock_state *hintblock_state,
 		struct bdl_block_location *location,
 		int *result
 ) {
 	*result = BDL_BLOCK_LOOP_OK;
 
-	location->block_location = 0;
-	location->hintblock_location = 0;
+	memset (location, '\0', sizeof(*location));
 
 	// Search for hint blocks
-
 	callback_data->file = file;
 	callback_data->master_header = header;
-	callback_data->state = hintblock_state;
 	callback_data->location = location;
+	callback_data->hintblock_position = 0;
+	callback_data->blockstart_min = 0;
+	callback_data->blockstart_max = 0;
+	memset (callback_data->location, '\0', sizeof(callback_data->location));
 
 	unsigned long int device_size = file->size;
 	unsigned long int header_size = header->header_size;
@@ -208,14 +208,14 @@ int block_loop_hintblocks_large_device (
 				file, i, header,
 				blockstart_min,
 				blockstart_max,
-				hintblock_state
+				&location->hintblock_state
 				) != 0
 		) {
 			fprintf (stderr, "Error while reading hint block at %lu while looping\n", i);
 			return 1;
 		}
 
-		callback_data->position = i;
+		callback_data->hintblock_position = i;
 		callback_data->blockstart_min = blockstart_min;
 		callback_data->blockstart_max = blockstart_max;
 
@@ -251,7 +251,6 @@ int block_loop_blocks (
 	char **block_data,
 
 	struct bdl_block_loop_callback_data *callback_data,
-	struct bdl_block_location *location,
 	int *result
 ) {
 	*result = BDL_BLOCK_LOOP_OK;
@@ -261,19 +260,18 @@ int block_loop_blocks (
 		exit (EXIT_FAILURE);
 	}
 
-	location->hintblock_location = hintblock_state->location;
-
 	callback_data->file = file;
-	callback_data->location = location;
 	callback_data->master_header = header;
-	callback_data->state = hintblock_state;
+	callback_data->hintblock_state = hintblock_state;
+	callback_data->block_position = 0;
+	callback_data->block = NULL;
+	callback_data->block_data = NULL;
 
 	for (unsigned long int i = hintblock_state->blockstart_min;
 			i <= hintblock_state->blockstart_max &&
 			i <= hintblock_state->hintblock.previous_block_pos;
 			i += header->block_size
 	) {
-		location->block_location = i;
 
 		if (block_get_validate_block (
 				file, i, header,
@@ -285,6 +283,7 @@ int block_loop_blocks (
 			return 1;
 		}
 
+		callback_data->block_position = i;
 		callback_data->block = *block_header;
 		callback_data->block_data = *block_data;
 

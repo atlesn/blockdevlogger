@@ -35,22 +35,18 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;
-	location->hintblock_location = 0;
 
 	return 1;
 }
 
 int write_check_free_hintblock (
-		struct io_file *file,
-		int position,
 		const struct bdl_header *master_header,
-		int blockstart_min,
-		int blockstart_max,
-		struct bdl_hintblock_state *state,
 		struct bdl_block_location *location,
 		int *result
 ) {
 	*result = 1;
+
+	struct bdl_hintblock_state *state = &location->hintblock_state;
 
 	// We write here if we find an invalid/unused hint block
 	if (state->valid == 0) {
@@ -59,20 +55,18 @@ int write_check_free_hintblock (
 		printf ("Hint block was unused\n");
 #endif
 
-		location->block_location = blockstart_min;
-		location->hintblock_location = position;
+		location->block_location = state->blockstart_min;
 
 		*result = 0;
 	}
 	else {
-		if (state->hintblock.previous_block_pos + master_header->block_size <= blockstart_max) {
+		if (state->hintblock.previous_block_pos + master_header->block_size <= state->blockstart_max) {
 
 #ifdef BDL_DBG_WRITE
 			printf ("Hint block has free room\n");
 #endif
 
 			location->block_location = state->hintblock.previous_block_pos + master_header->block_size;
-			location->hintblock_location = position;
 
 			*result = 0;
 		}
@@ -82,8 +76,7 @@ int write_check_free_hintblock (
 				printf ("Hint block is full\n");
 #endif
 
-			location->block_location = blockstart_min;
-			location->hintblock_location = position;
+			location->block_location = state->blockstart_min;
 
 			*result = 1;
 		}
@@ -100,10 +93,11 @@ struct hintblock_timestamp {
 
 int write_hintblock_check_timestamps (struct bdl_hintblock_loop_callback_data *data, int *result) {
 	struct hintblock_timestamp *timestamp = (struct hintblock_timestamp *) data->argument_ptr;
+	const struct bdl_hintblock_state *state = &data->location->hintblock_state;
 
-	if (data->state->highest_timestamp < timestamp->min_timestamp) {
-		timestamp->min_timestamp = data->state->highest_timestamp;
-		timestamp->state = *data->state;
+	if (state->highest_timestamp < timestamp->min_timestamp) {
+		timestamp->min_timestamp = state->highest_timestamp;
+		timestamp->state = *state;
 		timestamp->initialized = 1;
 	}
 
@@ -116,12 +110,7 @@ int write_hintblock_check_free_callback (struct bdl_hintblock_loop_callback_data
 	*result = BDL_BLOCK_LOOP_ERR;
 
 	if (write_check_free_hintblock (
-			data->file,
-			data->position,
 			data->master_header,
-			data->blockstart_min,
-			data->blockstart_max,
-			data->state,
 			data->location,
 			result
 			) != 0
@@ -152,15 +141,11 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 		return write_find_location_small(file, header, location);
 	}
 
-	location->block_location = 0;
-	location->hintblock_location = 0;
+	memset (location, '\0', sizeof(*location));
 
 	// Search for hint blocks
-	struct bdl_hintblock_state hintblock_state;
 	struct bdl_hintblock_loop_callback_data callback_data;
-
-	callback_data.argument_int = 0;
-	callback_data.argument_ptr = NULL;
+	memset (&callback_data, '\0', sizeof(callback_data));
 
 	// Attempt to find a hint block with free room
 	int result;
@@ -169,7 +154,6 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 			header,
 			write_hintblock_check_free_callback,
 			&callback_data,
-			&hintblock_state,
 			location,
 			&result
 	) != 0) {
@@ -194,7 +178,6 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 			header,
 			write_hintblock_check_timestamps,
 			&callback_data,
-			&hintblock_state,
 			location,
 			&result
 	) != 0) {
@@ -203,7 +186,6 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 	}
 
 	if (timestamp.initialized == 1) {
-		location->hintblock_location = timestamp.state.location;
 		location->block_location = timestamp.state.blockstart_min;
 		return 0;
 	}
@@ -228,7 +210,8 @@ int write_put_and_pad_block (struct io_file *file, int pos, const char *data, in
 
 int write_update_hintblock (
 		struct io_file *file,
-		const struct bdl_block_location *location,
+		unsigned long int block_position,
+		unsigned long int hintblock_position,
 		const struct bdl_header *header
 
 ) {
@@ -237,8 +220,8 @@ int write_update_hintblock (
 	int result;
 
 	// Preserve information from exisiting hint block
-	if (block_get_valid_hintblock(file, location->hintblock_location, header, &hint_block, &result)) {
-		fprintf (stderr, "Error while getting hint block at %lu\n", location->hintblock_location);
+	if (block_get_valid_hintblock(file, hintblock_position, header, &hint_block, &result)) {
+		fprintf (stderr, "Error while getting hint block at %lu\n", hintblock_position);
 		return 1;
 	}
 
@@ -246,7 +229,7 @@ int write_update_hintblock (
 		memset (&hint_block, '\0', sizeof(hint_block));
 	}
 
-	hint_block.previous_block_pos = location->block_location;
+	hint_block.previous_block_pos = block_position;
 	hint_block.hash = 0;
 
 	if (crypt_hash_data(
@@ -261,7 +244,7 @@ int write_update_hintblock (
 
 	if (write_put_and_pad_block(
 			file,
-			location->hintblock_location,
+			hintblock_position,
 			(const char *) &hint_block, sizeof(hint_block),
 			header->pad_character,
 			header->block_size) != 0
@@ -274,70 +257,15 @@ int write_update_hintblock (
 }
 
 int write_put_block (
-		struct io_file *file,
-		const char *data,
-		int data_length,
+		struct io_file *session_file,
+		const char *data, unsigned long int data_length,
 		uint64_t appdata,
-		const struct bdl_block_location *location,
-		const struct bdl_header *header
+		unsigned long int faketimestamp
 ) {
-	// Work on data block
-	struct bdl_block_header block_header;
-	memset (&block_header, '\0', sizeof(block_header));
-	block_header.data_length = data_length;
-	block_header.timestamp = time_get_64();
-	block_header.application_data = appdata;
-
-	if (data_length > header->block_size - sizeof(block_header)) {
-		fprintf(stderr, "Length of data was to large to fit inside a block, length was %i while maximum size is %i\n", data_length, (int) (header->block_size - sizeof(block_header)));
-		return 1;
-	}
-
-	if (location->block_location < header->header_size) {
-		fprintf (stderr, "Bug: Block location was inside header on write\n");
-		exit (EXIT_FAILURE);
-	}
-
-	if (location->hintblock_location < header->header_size + header->block_size) {
-		fprintf (stderr, "Bug: Hint block location was too early on write\n");
-		exit (EXIT_FAILURE);
-	}
-
-	int block_total_size = sizeof(block_header) + data_length;
-	char hash_data[block_total_size];
-	memcpy (hash_data, &block_header, sizeof(block_header));
-	memcpy (hash_data + sizeof(block_header), data, data_length);
-
-	if (crypt_hash_data(
-			hash_data,
-			block_total_size,
-			header->default_hash_algorithm,
-			&block_header.hash) != 0
-	) {
-		fprintf (stderr, "Error while hashing block\n");
-		return 1;
-	}
-
-	memcpy (hash_data, &block_header, sizeof(block_header));
-
-	if (write_put_and_pad_block(
-			file,
-			location->block_location,
-			hash_data, block_total_size,
-			header->pad_character,
-			header->block_size) != 0
-	) {
-		fprintf (stderr, "Error while putting block\n");
-		return 1;
-	}
-
-	return write_update_hintblock(file, location, header);
-}
-
-int write_put_data(struct io_file *session_file, const char *data, int data_length, uint64_t appdata) {
 	struct bdl_header header;
 	int result;
 
+	// Read master header
 	if (block_get_validate_master_header(session_file, &header, &result) != 0) {
 		fprintf (stderr, "Could not get header from device while writing new data block\n");
 		return 1;
@@ -348,6 +276,7 @@ int write_put_data(struct io_file *session_file, const char *data, int data_leng
 		return 1;
 	}
 
+	// Find write location
 	struct bdl_block_location location;
 	if (write_find_location (session_file, &header, &location) != 0) {
 		fprintf (stderr, "Error while finding write location for device\n");
@@ -358,10 +287,60 @@ int write_put_data(struct io_file *session_file, const char *data, int data_leng
 	printf ("Writing new block at location %lu with hintblock at %lu\n", location.block_location, location.hintblock_location);
 #endif
 
-	if (write_put_block(session_file, data, data_length, appdata, &location, &header) != 0) {
-		fprintf (stderr, "Error while placing data block to location %lu\n", location.block_location);
+	// Work on data block
+	struct bdl_block_header block_header;
+	memset (&block_header, '\0', sizeof(block_header));
+	block_header.data_length = data_length;
+	block_header.timestamp = time_get_64();
+	block_header.application_data = appdata;
+
+	// TODO : Check unique timestamp
+
+	if (data_length > header.block_size - sizeof(block_header)) {
+		fprintf(stderr,
+					"Length of data was to large to fit inside a block, length was %lu while maximum size is %lu\n",
+					data_length, (header.block_size - sizeof(block_header))
+		);
 		return 1;
 	}
 
-	return 0;
+	if (location.block_location < header.header_size) {
+		fprintf (stderr, "Bug: Block location was inside header on write\n");
+		exit (EXIT_FAILURE);
+	}
+
+	if (location.hintblock_state.location < header.header_size + header.block_size) {
+		fprintf (stderr, "Bug: Hint block location was too early on write\n");
+		exit (EXIT_FAILURE);
+	}
+
+	unsigned long int block_total_size = sizeof(block_header) + data_length;
+	char hash_data[block_total_size];
+	memcpy (hash_data, &block_header, sizeof(block_header));
+	memcpy (hash_data + sizeof(block_header), data, data_length);
+
+	if (crypt_hash_data(
+			hash_data,
+			block_total_size,
+			header.default_hash_algorithm,
+			&block_header.hash) != 0
+	) {
+		fprintf (stderr, "Error while hashing block\n");
+		return 1;
+	}
+
+	memcpy (hash_data, &block_header, sizeof(block_header));
+
+	if (write_put_and_pad_block(
+			session_file,
+			location.block_location,
+			hash_data, block_total_size,
+			header.pad_character,
+			header.block_size) != 0
+	) {
+		fprintf (stderr, "Error while putting block\n");
+		return 1;
+	}
+
+	return write_update_hintblock(session_file, location.block_location, location.hintblock_state.location, &header);
 }

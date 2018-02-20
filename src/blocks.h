@@ -99,7 +99,7 @@ struct bdl_hintblock_state {
 
 struct bdl_block_location {
 	unsigned long int block_location;
-	unsigned long int hintblock_location;
+	struct bdl_hintblock_state hintblock_state;
 };
 
 struct bdl_hintblock_loop_callback_data {
@@ -111,8 +111,7 @@ struct bdl_hintblock_loop_callback_data {
 	struct io_file *file;
 	const struct bdl_header *master_header;
 	struct bdl_block_location *location;
-	struct bdl_hintblock_state *state;
-	unsigned long int position;
+	unsigned long int hintblock_position;
 	unsigned long int blockstart_min;
 	unsigned long int blockstart_max;
 };
@@ -125,8 +124,9 @@ struct bdl_block_loop_callback_data {
 	// Initialized by the loop itself
 	struct io_file *file;
 	const struct bdl_header *master_header;
-	const struct bdl_hintblock_state *state;
-	const struct bdl_block_location *location;
+	const struct bdl_hintblock_state *hintblock_state;
+
+	unsigned long int block_position;
 	const struct bdl_block_header *block;
 	const char *block_data;
 };
@@ -143,7 +143,6 @@ int block_loop_hintblocks_large_device (
 	const struct bdl_header *header,
 	int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
 	struct bdl_hintblock_loop_callback_data *callback_data,
-	struct bdl_hintblock_state *hintblock_state,
 	struct bdl_block_location *location,
 	int *result
 );
@@ -159,7 +158,6 @@ int block_loop_blocks (
 	char **block_data,
 
 	struct bdl_block_loop_callback_data *callback_data,
-	struct bdl_block_location *location,
 	int *result
 );
 int block_get_validate_master_header(struct io_file *file, struct bdl_header *header, int *result);

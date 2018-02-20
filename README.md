@@ -44,32 +44,35 @@ corrupted, no operations may be performed. If a hint block or
 data block is corrupted, it is considered free space.
 
 ## COMMANDS
-### bdl init dev={DEVICE} [bs=BLOCKSIZE] [hpad=HEADER PADDING] [padchar=BYTE IN HEX] *
+### bdl init dev={DEVICE} [bs=NUM] [hpad=NUM] [padchar=HEX8] *
 
 Initializes a device by writing a new header.
 ```
-dev		Device or file to initialize
-bs		The fixed size of blocks and hint blocks,
-		must be dividable by 256
+dev			Device or file to initialize
+bs			The fixed size of blocks and hint blocks,
+			must be dividable by 256
 hpad		The size of the master header, can be used to change the
-		position of hint blocks if desirable.
-padchar		The character to use for padding blocks, defaults to 0xff.
-		Correct value relieves strain on some memory chips.
+			position of hint blocks if desirable.
+padchar		The character to use for padding blocks in hex, defaults to 0xff.
+			Correct value may relieve strain on some memory chips.
 ```
-### bdl write dev={DEVICE} [appdata=APPLICATION DATA 64bit HEX] {DATA} *
+### bdl write dev={DEVICE} [faketimestamp=NUM] [appdata=HEX64] {DATA} *
 
 Write a new data block to the next free location or overwrite oldest entry.
 
 ```
-appdata		Optional, save application-specific data ignored by BDL.
+appdata			Save application-specific data ignored by BDL. Default is 0.
+faketimestamp	If the timestamp is equal to the last entry, increment it by 1
+				up to NUM times. Error occurs when NUM is exceeded.
 ```
 
-### bdl read [ts_gteq=POSITIVE TIMESTAMP IN MILLISECONDS] *
+### bdl read [ts_gteq=NUM] *
 
 Read blocks and print to STDOUT.
 
 ```
 ts_gteq		Specifiy a minimum timestamp of blocks to print. Default is 0.
+limit		Stop after this many entries are found.
 ```
 
 ### bdl open dev={DEVICE} *
