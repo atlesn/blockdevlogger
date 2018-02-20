@@ -56,12 +56,13 @@ hpad		The size of the master header, can be used to change the
 padchar		The character to use for padding blocks in hex, defaults to 0xff.
 			Correct value may relieve strain on some memory chips.
 ```
-### bdl write dev={DEVICE} [faketimestamp=NUM] [appdata=HEX64] {DATA} *
+### bdl write dev={DEVICE} [timestamp=NUM] [faketimestamp=NUM] [appdata=HEX64] {DATA} 
 
 Write a new data block to the next free location or overwrite oldest entry.
 
 ```
 appdata			Save application-specific data ignored by BDL. Default is 0.
+timestamp		Set a timestamp manually in milliseconds. Default is current time.
 faketimestamp	If the timestamp is equal to the last entry, increment it by 1
 				up to NUM times. Error occurs when NUM is exceeded.
 ```

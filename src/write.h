@@ -30,6 +30,7 @@ int write_put_block (
 		struct io_file *session_file,
 		const char *data, unsigned long int data_length,
 		uint64_t appdata,
+		uint64_t timestamp,
 		unsigned long int faketimestamp
 );
 

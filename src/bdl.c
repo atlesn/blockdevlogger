@@ -140,10 +140,12 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 	else if (cmd_match(&session->cmd_data, "write")) {
 		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
 		const char *appdata_string = cmd_get_value(&session->cmd_data, "appdata");
+		const char *timestamp_string = cmd_get_value(&session->cmd_data, "timestamp");
 		const char *faketimestamp_string = cmd_get_value(&session->cmd_data, "faketimestamp");
 		const char *data = cmd_get_last_argument(&session->cmd_data);
 
 		uint64_t appdata = 0;
+		uint64_t timestamp = 0;
 		unsigned long int faketimestamp = 0;
 
 		if (data == NULL || *data == '\0') {
@@ -157,6 +159,14 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			}
 
 			appdata = cmd_get_hex_64(&session->cmd_data, "appdata");
+		}
+		if (timestamp_string != NULL) {
+			if (cmd_convert_uint64_10(&session->cmd_data, "timestamp") != 0) {
+				fprintf(stderr, "Error: Could not interpret timestamp argument, use timestamp=NUM\n");
+				return 1;
+			}
+
+			timestamp = cmd_get_uint64(&session->cmd_data, "timestamp");
 		}
 		if (faketimestamp_string != NULL) {
 			if (cmd_convert_integer_10(&session->cmd_data, "faketimestamp") != 0) {
@@ -184,7 +194,13 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 			return 1;
 		}
 
-		if (write_put_block(&session->device, data, strlen(data)+1, appdata, faketimestamp) != 0) {
+		if (write_put_block(
+				&session->device,
+				data, strlen(data)+1,
+				appdata,
+				timestamp,
+				faketimestamp
+		) != 0) {
 			close_session(session);
 			return 1;
 		}

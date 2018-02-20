@@ -261,6 +261,7 @@ int write_put_block (
 		struct io_file *session_file,
 		const char *data, unsigned long int data_length,
 		uint64_t appdata,
+		uint64_t timestamp,
 		unsigned long int faketimestamp
 ) {
 	struct bdl_header header;
@@ -292,19 +293,31 @@ int write_put_block (
 	struct bdl_block_header block_header;
 	memset (&block_header, '\0', sizeof(block_header));
 	block_header.data_length = data_length;
-	block_header.timestamp = time_get_64();
+	block_header.timestamp = (timestamp == 0 ? time_get_64() : timestamp);
 	block_header.application_data = appdata;
 
-	// TODO : Check unique timestamp
+	// Check timestamp
+	if (location.hintblock_state.highest_timestamp >= block_header.timestamp) {
+		if (faketimestamp == 0) {
+			fprintf (stderr, "Cannot insert element with earlier or equal timestamp than the latest block already in place. Check your clock or consider using faketimestamp.\n");
+			return 1;
+		}
+		else if (location.hintblock_state.highest_timestamp - block_header.timestamp > faketimestamp) {
+			fprintf (stderr, "Faketimestamp limit exceeded, check your clock or consider increasing it.\n");
+			return 1;
+		}
+		block_header.timestamp = location.hintblock_state.highest_timestamp + 1;
+	}
 
+	// Check data length
 	if (data_length > header.block_size - sizeof(block_header)) {
-		fprintf(stderr,
-					"Length of data was to large to fit inside a block, length was %lu while maximum size is %lu\n",
-					data_length, (header.block_size - sizeof(block_header))
+		fprintf(stderr, "Length of data was to large to fit inside a block, length was %lu while maximum size is %lu\n",
+				data_length, (header.block_size - sizeof(block_header))
 		);
 		return 1;
 	}
 
+	// Check for funny write locations
 	if (location.block_location < header.header_size) {
 		fprintf (stderr, "Bug: Block location was inside header on write\n");
 		exit (EXIT_FAILURE);
@@ -315,6 +328,7 @@ int write_put_block (
 		exit (EXIT_FAILURE);
 	}
 
+	// Checksum and write the block
 	unsigned long int block_total_size = sizeof(block_header) + data_length;
 	char hash_data[block_total_size];
 	memcpy (hash_data, &block_header, sizeof(block_header));
@@ -343,5 +357,7 @@ int write_put_block (
 		return 1;
 	}
 
+
+	// Update hintblock
 	return write_update_hintblock(session_file, location.block_location, location.hintblock_state.location, &header);
 }
