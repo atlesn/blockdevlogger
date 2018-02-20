@@ -161,6 +161,7 @@ int block_loop_blocks (
 	struct bdl_block_loop_callback_data *callback_data,
 	int *result
 );
+
 int block_get_validate_master_header(struct io_file *file, struct bdl_header *header, int *result);
 void block_dump (const struct bdl_block_header *header, unsigned long int position, const char *data);
 

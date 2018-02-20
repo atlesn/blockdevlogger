@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 
 #include "io.h"
+#include "read.h"
 #include "blocks.h"
 
 struct read_block_loop_data {

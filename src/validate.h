@@ -19,6 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include "blocks.h"
 #include "io.h"
 
 int validate_dev (struct io_file *session_file, int *result);

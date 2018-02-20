@@ -45,7 +45,7 @@ corrupted, no operations may be performed. If a hint block or
 data block is corrupted, it is considered free space.
 
 ## COMMANDS
-### bdl init dev={DEVICE} [bs=NUM] [hpad=NUM] [padchar=HEX8] *
+### bdl init dev={DEVICE} [bs=NUM] [hpad=NUM] [padchar=HEX8]
 
 Initializes a device by writing a new header.
 ```
@@ -63,12 +63,12 @@ Write a new data block to the next free location or overwrite oldest entry.
 
 ```
 appdata			Save application-specific data ignored by BDL. Default is 0.
-timestamp		Set a timestamp manually in milliseconds. Default is current time.
+timestamp		Set a timestamp manually in microseconds. Default is current time.
 faketimestamp	If the timestamp is equal to the last entry, increment it by 1
 				up to NUM times. Error occurs when NUM is exceeded.
 ```
 
-### bdl read [ts_gteq=NUM] *
+### bdl read [ts_gteq=NUM]
 
 Read blocks and print to STDOUT.
 
@@ -77,8 +77,12 @@ ts_gteq		Specifiy a minimum timestamp of blocks to print. Default is 0.
 limit		Stop after this many entries are found. 0 means no limit (default).
 ```
 
-### bdl open dev={DEVICE} *
+### bdl open dev={DEVICE}
 
 Opens an interactive session. Device specified is kept open until "close" is called.
 Commands which require dev={DEVICE} now uses the open device instead, and attempts
 to specify it will fail the program.
+
+### bdl clear dev={DEVICE}
+
+Clear all hint blocks

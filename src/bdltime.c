@@ -27,13 +27,24 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <string.h>
 #include <stdlib.h>
 
+#include "bdltime.h"
+
+//#define DBL_DBG_TIME
+
 uint64_t time_get_64() {
 	struct timeval tv;
+	double time_tmp;
+
 	if (gettimeofday(&tv, NULL) != 0) {
 		fprintf (stderr, "Error while getting time, cannot recover from this: %s\n", strerror(errno));
 		exit (EXIT_FAILURE);
 	}
-	uint64_t total = 1000 * tv.tv_sec;
-	total += tv.tv_usec / 1000;
-	return total;
+
+	time_tmp = (tv.tv_sec * 1000000.0) + (tv.tv_usec);
+
+#ifdef DBL_DBG_TIME
+	printf ("Get time: %lf\n", time_tmp);
+#endif
+
+	return time_tmp;
 }

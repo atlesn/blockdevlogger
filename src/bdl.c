@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "validate.h"
 #include "session.h"
 #include "read.h"
+#include "clear.h"
 
 void help() {
 	printf ("Command was help\n");
@@ -76,6 +77,34 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 
 		close_session(session);
 
+	}
+	else if (cmd_match(&session->cmd_data, "clear")) {
+		const char *device_string = cmd_get_value(&session->cmd_data, "dev");
+
+		if (cmd_check_all_args_used(&session->cmd_data)) {
+			return 1;
+		}
+
+		if (start_session (session, device_string) != 0) {
+			fprintf (stderr, "Could not start session for clear command\n");
+			return 1;
+		}
+
+		int result;
+		if (clear_dev(&session->device, &result) != 0) {
+			fprintf (stderr, "Error while clearing device\n");
+			close_session(session);
+			return 1;
+		}
+
+		if (result == 0) {
+			printf ("Device was cleared\n");
+		}
+		else {
+			printf ("Device was not valid, must be initialized\n");
+		}
+
+		close_session(session);
 	}
 	else if (cmd_match(&session->cmd_data, "validate")) {
 		const char *device_string = cmd_get_value(&session->cmd_data, "dev");

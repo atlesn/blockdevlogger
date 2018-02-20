@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "validate.h"
 #include "bdltime.h"
 
-//#define BDL_DBG_WRITE
+#define BDL_DBG_WRITE
 
 int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;
@@ -287,9 +287,6 @@ int write_put_block (
 		return 1;
 	}
 
-#ifdef BDL_DBG_WRITE
-	printf ("Writing new block at location %lu with hintblock at %lu\n", location.block_location, location.hintblock_state.location);
-#endif
 
 	// Work on data block
 	struct bdl_block_header block_header;
@@ -297,6 +294,12 @@ int write_put_block (
 	block_header.data_length = data_length;
 	block_header.timestamp = (timestamp == 0 ? time_get_64() : timestamp);
 	block_header.application_data = appdata;
+
+#ifdef BDL_DBG_WRITE
+	printf ("Writing new block at location %lu with hintblock at %lu timestamp %" PRIu64 "\n",
+			location.block_location, location.hintblock_state.location, block_header.timestamp
+	);
+#endif
 
 	// Check timestamp
 	if (location.hintblock_state.highest_timestamp >= block_header.timestamp) {
@@ -309,6 +312,11 @@ int write_put_block (
 			return 1;
 		}
 		block_header.timestamp = location.hintblock_state.highest_timestamp + 1;
+#ifdef BDL_DBG_WRITE
+		printf ("Timestamp corrected to %" PRIu64 "\n",
+				block_header.timestamp
+		);
+#endif
 	}
 
 	// Check data length
