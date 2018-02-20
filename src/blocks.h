@@ -26,6 +26,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "io.h"
 
+#define BDL_BLOCK_LOOP_OK		0
+#define BDL_BLOCK_LOOP_ERR		1
+#define BDL_BLOCK_LOOP_BREAK	2
+
 struct bdl_header {
 	uint8_t header_begin_message[32];
 
@@ -99,40 +103,66 @@ struct bdl_block_location {
 };
 
 struct bdl_hintblock_loop_callback_data {
-		// May be initialized before looping, not used by the loop
-		int argument_int;
-		void *argument_ptr;
+	// May be initialized before looping, not used by the loop
+	int argument_int;
+	void *argument_ptr;
 
-		// Initialized by the loop itself
-		struct io_file *file;
-		const struct bdl_header *master_header;
-		struct bdl_block_location *location;
-		struct bdl_hintblock_state *state;
-		unsigned long int position;
-		unsigned long int blockstart_min;
-		unsigned long int blockstart_max;
+	// Initialized by the loop itself
+	struct io_file *file;
+	const struct bdl_header *master_header;
+	struct bdl_block_location *location;
+	struct bdl_hintblock_state *state;
+	unsigned long int position;
+	unsigned long int blockstart_min;
+	unsigned long int blockstart_max;
 };
 
-#define BDL_HINTBLOCK_LOOP_OK		0
-#define BDL_HINTBLOCK_LOOP_ERR		1
-#define BDL_HINTBLOCK_LOOP_BREAK	2
+struct bdl_block_loop_callback_data {
+	// May be initialized before looping, not used by the loop
+	int argument_int;
+	void *argument_ptr;
+
+	// Initialized by the loop itself
+	struct io_file *file;
+	const struct bdl_header *master_header;
+	const struct bdl_hintblock_state *state;
+	const struct bdl_block_location *location;
+	const struct bdl_block_header *block;
+	const char *block_data;
+};
 
 int block_get_valid_hintblock (
-		struct io_file *file,
-		unsigned long int pos,
-		const struct bdl_header *master_header,
-		struct bdl_hint_block *hintblock,
-		int *result
+	struct io_file *file,
+	unsigned long int pos,
+	const struct bdl_header *master_header,
+	struct bdl_hint_block *hintblock,
+	int *result
 );
-int block_loop_hintblocks_large_device(
-		struct io_file *file,
-		const struct bdl_header *header,
-		int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
-		struct bdl_hintblock_loop_callback_data *callback_data,
-		struct bdl_hintblock_state *hintblock_state,
-		struct bdl_block_location *location,
-		int *result
+int block_loop_hintblocks_large_device (
+	struct io_file *file,
+	const struct bdl_header *header,
+	int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
+	struct bdl_hintblock_loop_callback_data *callback_data,
+	struct bdl_hintblock_state *hintblock_state,
+	struct bdl_block_location *location,
+	int *result
 );
-int block_get_valid_master_header(struct io_file *file, struct bdl_header *header, int *result);
+int block_loop_blocks (
+	struct io_file *file,
+	const struct bdl_header *header,
+	const struct bdl_hintblock_state *hintblock_state,
+	int (*callback)(struct bdl_block_loop_callback_data *, int *result),
+
+	char *block_data_buf,
+	unsigned long int block_data_length,
+	struct bdl_block_header **block_header,
+	char **block_data,
+
+	struct bdl_block_loop_callback_data *callback_data,
+	struct bdl_block_location *location,
+	int *result
+);
+int block_get_validate_master_header(struct io_file *file, struct bdl_header *header, int *result);
+void block_dump (const struct bdl_block_header *header, const char *data);
 
 #endif

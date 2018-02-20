@@ -37,14 +37,8 @@ void cmd_init(struct cmd_data *data) {
 	data->command = NULL;
 	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
 		data->args[i] = NULL;
-		data->arg_pairs[i].key[0] = '\0';
-		data->arg_pairs[i].value[0] = '\0';
-		data->arg_pairs[i].value_int = 0;
-		data->arg_pairs[i].value_hex = 0x00;
-		data->arg_pairs[i].integer_is_converted = 0;
-		data->arg_pairs[i].hex_is_converted = 0;
-		data->arg_pairs[i].hex64_is_converted = 0;
 		data->args_used[i] = 0;
+		memset(&data->arg_pairs[i], '\0', sizeof(data->arg_pairs[i]));
 	}
 }
 
@@ -133,7 +127,7 @@ int cmd_convert_uint64_10(struct cmd_data *data, const char *key) {
 		return 1;
 	}
 
-	if (data->arg_pairs[index].uint64_is_converted) {
+	if (data->arg_pairs[index].uint64_is_converted == 1) {
 		return 0;
 	}
 
@@ -191,12 +185,10 @@ char cmd_get_hex_byte(struct cmd_data *data, const char *key) {
 		exit (EXIT_FAILURE);
 	}
 
-	#ifdef BDL_DBG_CMDLINE
 	if (data->arg_pairs[index].hex_is_converted != 1) {
 		fprintf(stderr, "Bug: Called cmd_get_hex without cmd_convert_hex being called first\n");
 		exit (EXIT_FAILURE);
 	}
-	#endif
 
 	data->args_used[index] = 1;
 
@@ -211,12 +203,10 @@ uint64_t cmd_get_hex_64(struct cmd_data *data, const char *key) {
 		exit (EXIT_FAILURE);
 	}
 
-	#ifdef BDL_DBG_CMDLINE
 	if (data->arg_pairs[index].hex64_is_converted != 1) {
 		fprintf(stderr, "Bug: Called cmd_get_hex_64 without cmd_convert_hex_64 being called first\n");
 		exit (EXIT_FAILURE);
 	}
-	#endif
 
 	data->args_used[index] = 1;
 
@@ -231,13 +221,10 @@ long int cmd_get_integer(struct cmd_data *data, const char *key) {
 		exit (EXIT_FAILURE);
 	}
 
-	#ifdef BDL_DBG_CMDLINE
 	if (data->arg_pairs[index].integer_is_converted != 1) {
 		fprintf(stderr, "Bug: Called cmd_get_integer without cmd_convert_integer being called first\n");
 		exit (EXIT_FAILURE);
 	}
-	#endif
-
 	data->args_used[index] = 1;
 
 	return data->arg_pairs[index].value_int;

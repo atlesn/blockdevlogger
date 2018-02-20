@@ -33,15 +33,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "validate.h"
 #include "bdltime.h"
 
-#define BDL_DBG_WRITE
-
-/* Default hint block spacing is 128MB, one is also placed at the very end */
-//#define BDL_DEFAULT_HINT_BLOCK_SPACING 128 * 1024 * 1024;
-
-/* For devices smaller than 256MB, use four blocks plus one at the end */
-//#define BDL_SMALL_THRESHOLD 256 * 1024 * 1024;
-//#define BDL_DEFAULT_HINT_BLOCK_COUNT_SMALL 4;
-
 int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;
 	location->hintblock_location = 0;
@@ -116,13 +107,13 @@ int write_hintblock_check_timestamps (struct bdl_hintblock_loop_callback_data *d
 		timestamp->initialized = 1;
 	}
 
-	*result = BDL_HINTBLOCK_LOOP_OK;
+	*result = BDL_BLOCK_LOOP_OK;
 
 	return 0;
 }
 
 int write_hintblock_check_free_callback (struct bdl_hintblock_loop_callback_data *data, int *result) {
-	*result = BDL_HINTBLOCK_LOOP_ERR;
+	*result = BDL_BLOCK_LOOP_ERR;
 
 	if (write_check_free_hintblock (
 			data->file,
@@ -141,12 +132,12 @@ int write_hintblock_check_free_callback (struct bdl_hintblock_loop_callback_data
 
 	if (*result == 0) {
 		// Hint block has free room
-		*result = BDL_HINTBLOCK_LOOP_BREAK;
+		*result = BDL_BLOCK_LOOP_BREAK;
 		data->argument_int = 0;
 	}
 	else if (*result == 1) {
 		// Hint block is full
-		*result = BDL_HINTBLOCK_LOOP_OK;
+		*result = BDL_BLOCK_LOOP_OK;
 		data->argument_int = 1;
 	}
 
@@ -347,7 +338,7 @@ int write_put_data(struct io_file *session_file, const char *data, int data_leng
 	struct bdl_header header;
 	int result;
 
-	if (block_get_valid_master_header(session_file, &header, &result) != 0) {
+	if (block_get_validate_master_header(session_file, &header, &result) != 0) {
 		fprintf (stderr, "Could not get header from device while writing new data block\n");
 		return 1;
 	}

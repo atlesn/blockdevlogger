@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <stdio.h>
+#include <unistd.h>
 #include <errno.h>
 #include <string.h>
 #include <inttypes.h>
@@ -30,7 +31,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "crypt.h"
 #include "io.h"
 #include "validate.h"
-
 
 int block_hintblock_get_last_block (
 		struct io_file *file,
@@ -54,6 +54,43 @@ int block_hintblock_get_last_block (
 	}
 
 	memcpy (block, temp_block_data, sizeof(*block));
+
+	return 0;
+}
+
+int block_get_validate_block (
+		struct io_file *file,
+		unsigned long int pos,
+		const struct bdl_header *master_header,
+
+		char *buf,
+		unsigned long int data_length,
+		struct bdl_block_header **block_header,
+		char **data,
+
+		int *result
+) {
+	*result = 0;
+
+	if (data_length < master_header->block_size) {
+		fprintf (stderr, "block_get_validate_block called with too small read buffer\n");
+		exit (EXIT_FAILURE);
+	}
+
+	if (io_read_block (file, pos, buf, master_header->block_size) != 0) {
+		fprintf (stderr, "Error while reading block area at %lu\n", pos);
+		*result = 1;
+		return 1;
+	}
+
+	*block_header = (struct bdl_block_header *) buf;
+	*data = buf + sizeof(struct bdl_block_header);
+
+	if (validate_block (buf, master_header, result) != 0) {
+		fprintf (stderr, "Error while checking hash for hint block at %lu\n", pos);
+		*result = 1;
+		return 1;
+	}
 
 	return 0;
 }
@@ -144,6 +181,8 @@ int block_loop_hintblocks_large_device (
 		struct bdl_block_location *location,
 		int *result
 ) {
+	*result = BDL_BLOCK_LOOP_OK;
+
 	location->block_location = 0;
 	location->hintblock_location = 0;
 
@@ -185,10 +224,10 @@ int block_loop_hintblocks_large_device (
 			return 1;
 		}
 
-		if (*result == BDL_HINTBLOCK_LOOP_BREAK) {
+		if (*result == BDL_BLOCK_LOOP_BREAK) {
 			return 0;
 		}
-		else if (*result == BDL_HINTBLOCK_LOOP_ERR) {
+		else if (*result == BDL_BLOCK_LOOP_ERR) {
 			return 1;
 		}
 
@@ -200,7 +239,72 @@ int block_loop_hintblocks_large_device (
 	return 0;
 }
 
-int block_get_valid_master_header(struct io_file *file, struct bdl_header *header, int *result) {
+int block_loop_blocks (
+	struct io_file *file,
+	const struct bdl_header *header,
+	const struct bdl_hintblock_state *hintblock_state,
+	int (*callback)(struct bdl_block_loop_callback_data *, int *result),
+
+	char *block_data_buf,
+	unsigned long int block_data_length,
+	struct bdl_block_header **block_header,
+	char **block_data,
+
+	struct bdl_block_loop_callback_data *callback_data,
+	struct bdl_block_location *location,
+	int *result
+) {
+	*result = BDL_BLOCK_LOOP_OK;
+
+	if (block_data_length < header->block_size) {
+		fprintf (stderr, "Bug: Too little data allocated for block in block loop\n");
+		exit (EXIT_FAILURE);
+	}
+
+	location->hintblock_location = hintblock_state->location;
+
+	callback_data->file = file;
+	callback_data->location = location;
+	callback_data->master_header = header;
+	callback_data->state = hintblock_state;
+
+	for (unsigned long int i = hintblock_state->blockstart_min;
+			i <= hintblock_state->blockstart_max &&
+			i <= hintblock_state->hintblock.previous_block_pos;
+			i += header->block_size
+	) {
+		location->block_location = i;
+
+		if (block_get_validate_block (
+				file, i, header,
+				block_data_buf, block_data_length,
+				block_header, block_data,
+				result
+		) != 0) {
+			fprintf (stderr, "Error while getting and validating block at %lu\n", i);
+			return 1;
+		}
+
+		callback_data->block = *block_header;
+		callback_data->block_data = *block_data;
+
+		if (callback (callback_data, result) != 0) {
+			fprintf (stderr, "Error in callback function while looping blocks, at pos %lu\n", i);
+			return 1;
+		}
+
+		if (*result == BDL_BLOCK_LOOP_BREAK) {
+			break;
+		}
+		else if (*result == BDL_BLOCK_LOOP_ERR) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+int block_get_validate_master_header(struct io_file *file, struct bdl_header *header, int *result) {
 	if (io_read_block(file, 0, (char *) header, sizeof(*header)) != 0) {
 		fprintf (stderr, "Error while reading header from file\n");
 		return 1;
@@ -212,4 +316,43 @@ int block_get_valid_master_header(struct io_file *file, struct bdl_header *heade
 	}
 
 	return 0;
+}
+
+void block_dump (const struct bdl_block_header *header, const char *data) {
+	char buf[1024 + header->data_length];
+
+	int bytes = snprintf (buf, 1024,
+			"BLOCK:%" PRIu64 ":%" PRIu64 ":%" PRIu64 ":%" PRIu32 ":%" PRIu32 ":",
+			header->timestamp,
+			header->application_data,
+			header->data_length,
+			header->pad,
+			header->hash
+	);
+	if (bytes >= 1024 - 1) {
+		fprintf (stderr, "Bug: Block dump buffer got full\n");
+		exit (EXIT_FAILURE);
+	}
+
+	memcpy(buf + bytes, data, header->data_length);
+
+	/* TODO this writing stuff is probably slow (if it matters) */
+	if (fflush(stdout) != 0) {
+		fprintf (stderr, "Error while flushing stdout buffer: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+
+	buf[bytes + header->data_length] = '\n';
+	bytes++;
+
+	int res = write (fileno(stdout), buf, bytes + header->data_length);
+
+	if (res == -1) {
+		fprintf (stderr, "Error while write block data to stdout: %s\n", strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	if (res != bytes + header->data_length) {
+		fprintf (stderr, "Did not write all block data bytes for some reason\n");
+		exit(EXIT_FAILURE);
+	}
 }

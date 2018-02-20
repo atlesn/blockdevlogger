@@ -117,7 +117,7 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 				fprintf(stderr, "Error: Could not interpret timestamp greater or equal argument, use ts_gteq=POSITIVE INTEGER\n");
 				return 1;
 			}
-			timestamp_gteq = cmd_get_integer(&session->cmd_data, "ts_gteq");
+			timestamp_gteq = cmd_get_uint64(&session->cmd_data, "ts_gteq");
 			if (timestamp_gteq < 0) {
 				fprintf(stderr, "Error: Timestamp greater or equal argument must be zero or greater, %lu was gives\n", timestamp_gteq);
 				return 1;
