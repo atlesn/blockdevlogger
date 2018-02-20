@@ -96,7 +96,7 @@ int read_hintblock_loop_callback(struct bdl_hintblock_loop_callback_data *data, 
 			read_block_loop_callback,
 			block_buf, master_header->block_size,
 			&block_header, &block_data,
-			&callback_data, &block_position,
+			&callback_data,
 			result
 	) != 0) {
 		fprintf (stderr, "Error while looping blocks in hintblock loop\n");

@@ -36,7 +36,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;
 
-	return 1;
+	// TODO : Implement
+
+	fprintf (stderr, "Error: Small devices are not yet supported\n");
+	exit (EXIT_FAILURE);
 }
 
 int write_check_free_hintblock (
@@ -140,8 +143,6 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 #endif
 		return write_find_location_small(file, header, location);
 	}
-
-	memset (location, '\0', sizeof(*location));
 
 	// Search for hint blocks
 	struct bdl_hintblock_loop_callback_data callback_data;

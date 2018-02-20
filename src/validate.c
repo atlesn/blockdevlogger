@@ -139,12 +139,9 @@ int validate_header (const struct bdl_header *header, int file_size, int *result
 }
 
 int validate_dev (struct io_file *session_file, int *result) {
-	struct io_file local_file;
-	struct io_file *file;
-
 	struct bdl_header header;
 
-	if (block_get_validate_master_header(file, &header, result) != 0) {
+	if (block_get_validate_master_header(session_file, &header, result) != 0) {
 		fprintf (stderr, "Could not get header from device while writing new data block\n");
 		return 1;
 	}

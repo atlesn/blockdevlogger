@@ -191,7 +191,6 @@ int block_loop_hintblocks_large_device (
 	callback_data->hintblock_position = 0;
 	callback_data->blockstart_min = 0;
 	callback_data->blockstart_max = 0;
-	memset (callback_data->location, '\0', sizeof(callback_data->location));
 
 	unsigned long int device_size = file->size;
 	unsigned long int header_size = header->header_size;
