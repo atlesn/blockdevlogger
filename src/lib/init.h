@@ -19,36 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef BDL_WRITE_H
-#define BDL_WRITE_H
-
-#include <stdint.h>
-
 #include "io.h"
-#include "blocks.h"
+#include "../bdl.h"
 
-int write_put_block (
-		struct io_file *session_file,
-		const char *data, unsigned long int data_length,
-		uint64_t appdata,
-		uint64_t timestamp,
-		unsigned long int faketimestamp
-);
-
-int write_update_hintblock (
-		struct io_file *file,
-		unsigned long int block_position,
-		uint64_t previous_tagged_block_pos,
-		unsigned long int hintblock_position,
-		unsigned long int hintblock_backup_position,
-		const struct bdl_header *header
-);
-
-int write_put_and_pad_block (
-		struct io_file *file,
-		int pos,
-		const char *data, int data_length,
-		char pad, int total_size
-);
-
-#endif
+int init_dev(struct bdl_io_file *file, long int blocksize, long int header_pad, char padchar);

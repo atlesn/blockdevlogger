@@ -19,11 +19,38 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef BDL_CLEAR_H
-#define BDL_CLEAR_H
+#ifndef BDL_WRITE_H
+#define BDL_WRITE_H
+
+#include <stdint.h>
 
 #include "io.h"
+#include "blocks.h"
 
-int clear_dev(struct io_file *io, int *result);
+struct bdl_io_file;
+
+int write_put_block (
+		struct bdl_io_file *session_file,
+		const char *data, unsigned long int data_length,
+		uint64_t appdata,
+		uint64_t timestamp,
+		unsigned long int faketimestamp
+);
+
+int write_update_hintblock (
+		struct bdl_io_file *file,
+		unsigned long int block_position,
+		uint64_t previous_tagged_block_pos,
+		unsigned long int hintblock_position,
+		unsigned long int hintblock_backup_position,
+		const struct bdl_header *header
+);
+
+int write_put_and_pad_block (
+		struct bdl_io_file *file,
+		int pos,
+		const char *data, int data_length,
+		char pad, int total_size
+);
 
 #endif

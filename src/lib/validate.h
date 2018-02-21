@@ -19,15 +19,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include "blocks.h"
 #include "io.h"
-#include "cmdline.h"
 
-struct session {
-	struct io_file device;
-	int usercount;
-	struct cmd_data cmd_data;
-};
+struct bdl_io_file;
 
-void init_session (struct session *session);
-int start_session (struct session *session, const char *device_path);
-void close_session (struct session *session);
+int validate_dev (struct bdl_io_file *session_file, int *result);
+int validate_hintblock (
+		const struct bdl_hint_block *header_orig,
+		unsigned long int position,
+		const struct bdl_header *master_header,
+		int *result
+);
+
+int validate_block(const char *all_data, const struct bdl_header *master_header, int *result);
+
+int validate_header (const struct bdl_header *header, int file_size, int *result);

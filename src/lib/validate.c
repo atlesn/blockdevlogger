@@ -154,7 +154,7 @@ int validate_header (const struct bdl_header *header, int file_size, int *result
 	return 0;
 }
 
-int validate_dev (struct io_file *session_file, int *result) {
+int validate_dev (struct bdl_io_file *session_file, int *result) {
 	struct bdl_header header;
 
 	if (block_get_validate_master_header(session_file, &header, result) != 0) {

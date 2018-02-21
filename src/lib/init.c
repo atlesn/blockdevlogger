@@ -29,8 +29,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "blocks.h"
 #include "crypt.h"
 #include "io.h"
+#include "../bdl.h"
+#include "../../config.h"
 
-int check_blank_device (struct io_file *file) {
+int check_blank_device (struct bdl_io_file *file) {
 	int item_count = BDL_NEW_DEVICE_BLANK_START_SIZE / sizeof(int);
 	int buf[item_count];
 	size_t items = fread (buf, sizeof(buf[0]), item_count, file->file);
@@ -62,7 +64,7 @@ int check_blank_device (struct io_file *file) {
 	return 1;
 }
 
-int init_dev(struct io_file *session_file, long int blocksize, long int header_pad, char padchar) {
+int init_dev(struct bdl_io_file *session_file, long int blocksize, long int header_pad, char padchar) {
 	// These are redudant checks, but keep them for now
 	if (header_pad < BDL_MINIMUM_HEADER_PAD) {
 		fprintf (stderr, "Bug: init_dev called with too small header pad\n");

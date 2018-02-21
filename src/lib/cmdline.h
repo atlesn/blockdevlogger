@@ -50,8 +50,8 @@ struct cmd_data {
 	struct cmd_arg_pair arg_pairs[BDL_ARGUMENT_MAX];
 };
 
-int cmd_parse						(struct cmd_data *data, const int argc, const char *argv[]);
-int cmd_match						(struct cmd_data *data, const char *test);
+int cmd_parse					(struct cmd_data *data, const int argc, const char *argv[]);
+int cmd_match					(struct cmd_data *data, const char *test);
 
 int cmd_convert_hex_64				(struct cmd_data *data, const char *key);
 int cmd_convert_hex_byte			(struct cmd_data *data, const char *key);
@@ -62,8 +62,8 @@ char cmd_get_hex_byte				(struct cmd_data *data, const char *key);
 uint64_t cmd_get_hex_64				(struct cmd_data *data, const char *key);
 long int cmd_get_integer			(struct cmd_data *data, const char *key);
 uint64_t cmd_get_uint64				(struct cmd_data *data, const char *key);
-const char *cmd_get_argument		(struct cmd_data *data, int index);
-const char *cmd_get_last_argument	(struct cmd_data *data);
+const char *cmd_get_argument			(struct cmd_data *data, int index);
+const char *cmd_get_last_argument		(struct cmd_data *data);
 const char *cmd_get_value			(struct cmd_data *data, const char *key);
 
 int cmd_check_all_args_used			(struct cmd_data *data);

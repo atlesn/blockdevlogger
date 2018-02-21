@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <inttypes.h>
 #include <stdlib.h>
 
+#include "../bdl.h"
 #include "blocks.h"
 #include "defaults.h"
 #include "crypt.h"
@@ -34,7 +35,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "write.h"
 
 int block_hintblock_get_last_block (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		const struct bdl_hintblock_state *state,
 		const struct bdl_header *master_header,
 		struct bdl_block_header *block,
@@ -60,7 +61,7 @@ int block_hintblock_get_last_block (
 }
 
 int block_get_validate_block (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		unsigned long int pos,
 		const struct bdl_header *master_header,
 
@@ -97,7 +98,7 @@ int block_get_validate_block (
 }
 
 int block_get_valid_hintblock (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		unsigned long int pos,
 		const struct bdl_header *master_header,
 		struct bdl_hint_block *hintblock,
@@ -120,7 +121,7 @@ int block_get_valid_hintblock (
 }
 
 int block_hintblock_recover_backup (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		const struct bdl_header *master_header,
 		struct bdl_hintblock_state *state,
 		int *result
@@ -155,7 +156,7 @@ int block_hintblock_recover_backup (
 }
 
 int block_get_hintblock_state (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		unsigned long int pos,
 		const struct bdl_header *master_header,
 		unsigned long int blockstart_min,
@@ -218,7 +219,7 @@ int block_get_hintblock_state (
 }
 
 int block_loop_hintblocks_worker (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		const struct bdl_header *header,
 		unsigned long int loop_begin,
 		unsigned long int loop_end,
@@ -279,7 +280,7 @@ int block_loop_hintblocks_worker (
 }
 
 int block_loop_hintblocks_large_device (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		const struct bdl_header *header,
 		const struct bdl_block_location *first_location,
 		int (*callback)(struct bdl_hintblock_loop_callback_data *, int *result),
@@ -350,7 +351,7 @@ int block_loop_hintblocks_large_device (
 }
 
 int block_loop_blocks (
-	struct io_file *file,
+	struct bdl_io_file *file,
 	const struct bdl_header *header,
 	const struct bdl_hintblock_state *hintblock_state,
 	int (*callback)(struct bdl_block_loop_callback_data *, int *result),
@@ -422,7 +423,7 @@ int block_loop_blocks (
 	return 0;
 }
 
-int block_get_validate_master_header(struct io_file *file, struct bdl_header *header, int *result) {
+int block_get_validate_master_header(struct bdl_io_file *file, struct bdl_header *header, int *result) {
 	if (io_read_block(file, 0, (char *) header, sizeof(*header)) != 0) {
 		fprintf (stderr, "Error while reading header from file\n");
 		return 1;

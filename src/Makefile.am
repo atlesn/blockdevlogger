@@ -1,2 +1,6 @@
+SUBDIRS = lib/
 bin_PROGRAMS = bdl
-bdl_SOURCES = cmdline.c init.c bdl.c crypt.c crc32.c io.c write.c blocks.c bdltime.c validate.c session.c read.c clear.c
+
+bdl_LDFLAGS = -Wl,--no-as-needed -ldl -rdynamic
+bdl_LDADD = lib/libbdl.la
+bdl_SOURCES = bdl.c

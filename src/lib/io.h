@@ -19,6 +19,17 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include "io.h"
+#ifndef BDL_IO_H
+#define BDL_IO_H
 
-int init_dev(struct io_file *file, long int blocksize, long int header_pad, char padchar);
+#include <stdio.h>
+
+struct bdl_io_file;
+
+int io_close (struct bdl_io_file *file);
+int io_open(const char *path, struct bdl_io_file *file);
+int io_sync(struct bdl_io_file *file);
+int io_write_block(struct bdl_io_file *file, unsigned long int position, const char *data, unsigned long int data_length, const char *padding, unsigned long int padding_length, int verbose);
+int io_read_block(struct bdl_io_file *file, unsigned long int position, char *data, unsigned long int data_length);
+
+#endif

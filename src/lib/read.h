@@ -19,17 +19,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#include "blocks.h"
+#ifndef BDL_READ_H
+#define BDL_READ_H
+
+#include <stdint.h>
+
+#include "../bdl.h"
 #include "io.h"
 
-int validate_dev (struct io_file *session_file, int *result);
-int validate_hintblock (
-		const struct bdl_hint_block *header_orig,
-		unsigned long int position,
-		const struct bdl_header *master_header,
-		int *result
-);
+int read_blocks (struct bdl_io_file *device, uint64_t timestamp_gteq, unsigned long int limit);
 
-int validate_block(const char *all_data, const struct bdl_header *master_header, int *result);
-
-int validate_header (const struct bdl_header *header, int file_size, int *result);
+#endif

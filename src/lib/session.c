@@ -23,14 +23,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "../bdl.h"
 #include "session.h"
 #include "io.h"
 
-void init_session (struct session *session) {
+void bdl_init_session (struct bdl_session *session) {
 	session->usercount = 0;
 }
 
-int start_session (struct session *session, const char *device_path) {
+int bdl_start_session (struct bdl_session *session, const char *device_path) {
 	if (session->usercount > 0) {
 		if (device_path != NULL) {
 			fprintf (stderr, "Device argument dev=DEVICE was given while session was already open\n");
@@ -55,7 +56,7 @@ int start_session (struct session *session, const char *device_path) {
 	return 0;
 }
 
-void close_session (struct session *session) {
+void bdl_close_session (struct bdl_session *session) {
 	if (session->usercount <= 0) {
 		fprintf (stderr, "Bug: close_session called while no session was active\n");
 		exit (EXIT_FAILURE);

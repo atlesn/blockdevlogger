@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 
+#include "../bdl.h"
 #include "io.h"
 #include "read.h"
 #include "blocks.h"
@@ -165,7 +166,7 @@ int read_find_oldest_hintblock_loop_callback (
 }
 
 int read_find_oldest_hintblock (
-		struct io_file *device,
+		struct bdl_io_file *device,
 		const struct bdl_header *master_header,
 		uint64_t timestamp_gteq,
 		struct bdl_block_location *location,
@@ -196,7 +197,7 @@ int read_find_oldest_hintblock (
 	return 0;
 }
 
-int read_blocks (struct io_file *device, uint64_t timestamp_gteq, unsigned long int limit) {
+int read_blocks (struct bdl_io_file *device, uint64_t timestamp_gteq, unsigned long int limit) {
 	struct bdl_header master_header;
 	int result;
 

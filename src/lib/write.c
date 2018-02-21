@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <inttypes.h>
 
+#include "../bdl.h"
 #include "write.h"
 #include "blocks.h"
 #include "defaults.h"
@@ -35,7 +36,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define BDL_DBG_WRITE
 
-int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
+int write_find_location_small(struct bdl_io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;
 
 	// TODO : Implement
@@ -138,7 +139,7 @@ int write_hintblock_check_free_callback (struct bdl_hintblock_loop_callback_data
 	return 0;
 }
 
-int write_find_location(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
+int write_find_location(struct bdl_io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	if (file->size < BDL_SMALL_SIZE_THRESHOLD) {
 #ifdef BDL_DBG_WRITE
 		printf ("Finding new write location for small device\n");
@@ -197,7 +198,7 @@ int write_find_location(struct io_file *file, const struct bdl_header *header, s
 	exit(EXIT_FAILURE);
 }
 
-int write_put_and_pad_block (struct io_file *file, int pos, const char *data, int data_length, char pad, int total_size) {
+int write_put_and_pad_block (struct bdl_io_file *file, int pos, const char *data, int data_length, char pad, int total_size) {
 	int padding_length = total_size - data_length;
 
 	char padding[padding_length];
@@ -212,7 +213,7 @@ int write_put_and_pad_block (struct io_file *file, int pos, const char *data, in
 }
 
 int write_update_hintblock (
-		struct io_file *file,
+		struct bdl_io_file *file,
 		unsigned long int block_position,
 		uint64_t previous_tagged_block_pos,
 		unsigned long int hintblock_position,
@@ -279,7 +280,7 @@ int write_update_hintblock (
 }
 
 int write_put_block (
-		struct io_file *session_file,
+		struct bdl_io_file *session_file,
 		const char *data, unsigned long int data_length,
 		uint64_t appdata,
 		uint64_t timestamp,

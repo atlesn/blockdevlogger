@@ -22,6 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <string.h>
 
+#include "../bdl.h"
 #include "io.h"
 #include "clear.h"
 #include "blocks.h"
@@ -47,7 +48,7 @@ int clear_hintblocks_loop_callback (
 	return BDL_BLOCK_LOOP_OK;
 }
 
-int clear_dev(struct io_file *file, int *result) {
+int clear_dev(struct bdl_io_file *file, int *result) {
 	struct bdl_header master_header;
 
 	if (block_get_validate_master_header(file, &master_header, result) != 0) {

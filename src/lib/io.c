@@ -32,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <linux/fs.h>
 #include <sys/mman.h>
 
+#include "../bdl.h"
 #include "io.h"
 #include "defaults.h"
 
@@ -71,7 +72,7 @@ int io_get_file_size(FILE *file, const char *filepath, unsigned long int *size) 
 	return 0;
 }
 
-int io_close (struct io_file *file) {
+int io_close (struct bdl_io_file *file) {
 	int ret = 0;
 	if (msync(file->memorymap, file->size, MS_SYNC) != 0) {
 		ret = 1;
@@ -83,7 +84,7 @@ int io_close (struct io_file *file) {
 	return ret;
 }
 
-int io_open(const char *path, struct io_file *file) {
+int io_open(const char *path, struct bdl_io_file *file) {
 	file->file = fopen(path, "r+");
 	file->seek = 0;
 	file->unsynced_write_bytes = 0;
@@ -109,7 +110,7 @@ int io_open(const char *path, struct io_file *file) {
 	return 0;
 }
 
-int io_seek(struct io_file *file, unsigned long int pos) {
+int io_seek(struct bdl_io_file *file, unsigned long int pos) {
 	if (pos >= file->size) {
 		fprintf (stderr, "Attempted to seek outside file\n");
 		return 1;
@@ -120,7 +121,7 @@ int io_seek(struct io_file *file, unsigned long int pos) {
 	return 0;
 }
 
-int io_read(struct io_file *file, void *target, unsigned int length) {
+int io_read(struct bdl_io_file *file, void *target, unsigned int length) {
 	if (file->seek + length >= file->size) {
 		fprintf (stderr, "Attempted to read outside file\n");
 		return 1;
@@ -131,7 +132,7 @@ int io_read(struct io_file *file, void *target, unsigned int length) {
 	return 0;
 }
 
-int io_update_sync_queue(struct io_sync_queue *sync_queue, void *start, void *end) {
+int io_update_sync_queue(struct bdl_io_sync_queue *sync_queue, void *start, void *end) {
 	if (sync_queue->count == 0) {
 		sync_queue->entries[0].start_address = start;
 		sync_queue->entries[0].end_address = end;
@@ -139,7 +140,7 @@ int io_update_sync_queue(struct io_sync_queue *sync_queue, void *start, void *en
 		return 0;
 	}
 
-	struct io_sync_queue_entry *entry;
+	struct bdl_io_sync_queue_entry *entry;
 	for (int i = 0; i < sync_queue->count; i++) {
 		entry = &sync_queue->entries[i];
 		if (start == entry->start_address || (start > entry->start_address && start <= entry->end_address)) {
@@ -168,9 +169,9 @@ int io_update_sync_queue(struct io_sync_queue *sync_queue, void *start, void *en
 	return 0;
 }
 
-int io_sync(struct io_file *file) {
+int io_sync(struct bdl_io_file *file) {
 	for (int i = 0; i < file->sync_queue.count; i++) {
-		struct io_sync_queue_entry *entry = &file->sync_queue.entries[i];
+		struct bdl_io_sync_queue_entry *entry = &file->sync_queue.entries[i];
 
 		// Align to page size
 		uintptr_t address_fix = (uintptr_t) entry->start_address;
@@ -201,7 +202,7 @@ int io_sync(struct io_file *file) {
 	return 0;
 }
 
-int io_write(struct io_file *file, const void *source, unsigned int length) {
+int io_write(struct bdl_io_file *file, const void *source, unsigned int length) {
 	if (file->seek + length >= file->size) {
 		fprintf (stderr, "Attempted to write outside file\n");
 		return 1;
@@ -219,7 +220,7 @@ int io_write(struct io_file *file, const void *source, unsigned int length) {
 }
 
 int io_write_block(
-		struct io_file *file,
+		struct bdl_io_file *file,
 		unsigned long int position,
 		const char *data, unsigned long int data_length,
 		const char *padding, unsigned long int padding_length,
@@ -252,7 +253,7 @@ int io_write_block(
 	return 0;
 }
 
-int io_read_block(struct io_file *file, unsigned long int position, char *data, unsigned long int data_length) {
+int io_read_block(struct bdl_io_file *file, unsigned long int position, char *data, unsigned long int data_length) {
 	if (io_seek (file, position) != 0) {
 		fprintf (stderr, "Error while seeking to read area at %lu\n", position);
 		return 1;

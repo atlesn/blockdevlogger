@@ -4,10 +4,14 @@ Makefile
 Makefile.in
 *.o
 *.so
+*.lo
 .deps
+/config.h
 
 # binaries
 /src/bdl
+/src/.libs/
+/src/lib/.libs/
 
 # http://www.gnu.org/software/autoconf
 
@@ -27,6 +31,8 @@ Makefile.in
 /install-sh
 /missing
 /stamp-h1
+/libtool
+
 
 # debian
 debian/autoreconf.after
@@ -36,6 +42,11 @@ debian/block-device-logger.substvars
 debian/block-device-logger/
 debian/debhelper-build-stamp
 debian/files
+debian/.debhelper/
+debian/libblock-device-logger.debhelper.log
+debian/libblock-device-logger.substvars
+debian/libblock-device-logger/
+debian/tmp/
 
 
 # https://www.gnu.org/software/libtool/

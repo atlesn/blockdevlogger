@@ -19,13 +19,3 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
-#ifndef BDL_READ_H
-#define BDL_READ_H
-
-#include <stdint.h>
-
-#include "io.h"
-
-int read_blocks (struct io_file *device, uint64_t timestamp_gteq, unsigned long int limit);
-
-#endif
