@@ -38,8 +38,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /* Maximum length of commands in session/stdin mode */
 #define BDL_MAXIMUM_CMDLINE_LENGTH 4096
-#define BDL_MAXIMUM_CMDLINE_ARGS 8
-#define BDL_MAXIMUM_CMDLINE_ARG_SIZE 4096
 
 /* How much to write to memory map before syncing */
 #define BDL_MMAP_SYNC_SIZE 65536

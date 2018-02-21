@@ -30,7 +30,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "crypt.h"
 #include "io.h"
 #include "../include/bdl.h"
-#include "../../config.h"
 
 int check_blank_device (struct bdl_io_file *file) {
 	int item_count = BDL_NEW_DEVICE_BLANK_START_SIZE / sizeof(int);

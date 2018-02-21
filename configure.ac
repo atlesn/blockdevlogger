@@ -3,6 +3,8 @@ AC_DEFINE([BDL_CONFIG_HEADER_START], "BLOCK DEVICE LOGGER", [The block system st
 AC_DEFINE([BDL_CONFIG_VERSION], 0.1, [Full version])
 AC_DEFINE([BDL_CONFIG_VERSION_MAJOR], 0, [Major version])
 AC_DEFINE([BDL_CONFIG_VERSION_MINOR], 1, [Minor version])
+AC_DEFINE([CMD_MAXIMUM_CMDLINE_ARGS], 8, [Maximum number of arguments to a command])
+AC_DEFINE([CMD_MAXIMUM_CMDLINE_ARG_SIZE], 4096, [Maximum length of an command line argument])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIRS([m4])
 AM_INIT_AUTOMAKE

@@ -1,6 +1,6 @@
 /*
 
-Block Device Logger
+Command Line Parser
 
 Copyright (C) 2018 Atle Solbakken atle@goliathdns.no
 
@@ -26,16 +26,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <inttypes.h>
 
 #include "cmdline.h"
-#include "defaults.h"
 
-//#define BDL_DBG_CMDLINE
+//#define CMD_DBG_CMDLINE
 
 static const char *cmd_blank_argument = "";
 static const char *cmd_help = "help";
 
 void cmd_init(struct cmd_data *data) {
 	data->command = NULL;
-	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX; i++) {
 		data->args[i] = NULL;
 		data->args_used[i] = 0;
 		memset(&data->arg_pairs[i], '\0', sizeof(data->arg_pairs[i]));
@@ -44,7 +43,7 @@ void cmd_init(struct cmd_data *data) {
 
 int cmd_check_all_args_used(struct cmd_data *data) {
 	int err = 0;
-	for (int i = 0; i < BDL_ARGUMENT_MAX && *(data->args[i]) != '\0'; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX && *(data->args[i]) != '\0'; i++) {
 		if (data->args_used[i] != 1) {
 			fprintf (stderr, "Error: Argument %i ('%s') was not used, possible junk or typo\n", i, data->args[i]);
 			err = 1;
@@ -54,7 +53,7 @@ int cmd_check_all_args_used(struct cmd_data *data) {
 }
 
 int cmd_get_value_index(struct cmd_data *data, const char *key) {
-	for (int i = 0; i < BDL_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
 		if (strcmp(data->arg_pairs[i].key, key) == 0) {
 			return i;
 		}
@@ -83,7 +82,7 @@ int cmd_convert_hex_byte(struct cmd_data *data, const char *key) {
 	data->arg_pairs[index].value_hex = intermediate;
 	data->arg_pairs[index].hex_is_converted = 1;
 
-	#ifdef BDL_DBG_CMDLINE
+	#ifdef CMD_DBG_CMDLINE
 
 	printf ("Converted argument with key '%s' to hex '%x'\n", key, data->arg_pairs[index].value_hex);
 
@@ -112,7 +111,7 @@ int cmd_convert_hex_64(struct cmd_data *data, const char *key) {
 	data->arg_pairs[index].value_hex_64 = intermediate;
 	data->arg_pairs[index].hex64_is_converted = 1;
 
-	#ifdef BDL_DBG_CMDLINE
+	#ifdef CMD_DBG_CMDLINE
 
 	printf ("Converted argument with key '%s' to hex64 '%" PRIx64 "'\n", key, data->arg_pairs[index].value_hex_64);
 
@@ -140,7 +139,7 @@ int cmd_convert_uint64_10(struct cmd_data *data, const char *key) {
 
 	data->arg_pairs[index].uint64_is_converted = 1;
 
-	#ifdef BDL_DBG_CMDLINE
+	#ifdef CMD_DBG_CMDLINE
 
 	printf ("Converted argument with key '%s' to uint64 %'" PRIx64 "'\n", key, data->arg_pairs[index].value_uint_64);
 
@@ -168,7 +167,7 @@ int cmd_convert_integer_10(struct cmd_data *data, const char *key) {
 
 	data->arg_pairs[index].integer_is_converted = 1;
 
-	#ifdef BDL_DBG_CMDLINE
+	#ifdef CMD_DBG_CMDLINE
 
 	printf ("Converted argument with key '%s' to integer '%ld'\n", key, data->arg_pairs[index].value_int);
 
@@ -238,7 +237,7 @@ uint64_t cmd_get_uint64(struct cmd_data *data, const char *key) {
 		exit (EXIT_FAILURE);
 	}
 
-	#ifdef BDL_DBG_CMDLINE
+	#ifdef CMD_DBG_CMDLINE
 	if (data->arg_pairs[index].uint64_is_converted != 1) {
 		fprintf(stderr, "Bug: Called cmd_get_uint64 without cmd_convert_uint64 being called first\n");
 		exit (EXIT_FAILURE);
@@ -251,9 +250,9 @@ uint64_t cmd_get_uint64(struct cmd_data *data, const char *key) {
 }
 
 const char *cmd_get_value(struct cmd_data *data, const char *key) {
-	for (int i = 0; i < BDL_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
 		if (strcmp(data->arg_pairs[i].key, key) == 0) {
-			#ifdef BDL_DBG_CMDLINE
+			#ifdef CMD_DBG_CMDLINE
 			printf ("Retrieve string argument %s: %s\n", key, data->arg_pairs[i].value);
 			#endif
 
@@ -266,7 +265,7 @@ const char *cmd_get_value(struct cmd_data *data, const char *key) {
 }
 
 const char *cmd_get_argument(struct cmd_data *data, int index) {
-	if (index >= BDL_ARGUMENT_MAX || *(data->args[index]) == '\0') {
+	if (index >= CMD_ARGUMENT_MAX || *(data->args[index]) == '\0') {
 		return NULL;
 	}
 	data->args_used[index] = 1;
@@ -275,7 +274,7 @@ const char *cmd_get_argument(struct cmd_data *data, int index) {
 
 /* Get last argument after already read arg=val pairs */
 const char *cmd_get_last_argument(struct cmd_data *data) {
-	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX; i++) {
 		if (data->args_used[i] == 0 && data->args[i] != NULL && *(data->args[i]) != '\0') {
 			data->args_used[i] = 1;
 			return data->args[i];
@@ -297,20 +296,20 @@ int cmd_parse(struct cmd_data *data, int argc, const char *argv[]) {
 	data->command = argv[1];
 
 	// Initialize all to empty strings
-	for (int i = 0; i < BDL_ARGUMENT_MAX; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX; i++) {
 		data->args[i] = cmd_blank_argument;
 	}
 
 	// Store pointers to all arguments
 	int arg_pos = 2;
-	for (int i = 0; i < BDL_ARGUMENT_MAX && arg_pos < argc; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX && arg_pos < argc; i++) {
 		data->args[i] = argv[arg_pos];
 		arg_pos++;
 	}
 
 	// Parse key-value pairs separated by =
 	int pairs_pos = 0;
-	for (int i = 0; i < BDL_ARGUMENT_MAX && data->args[i] != NULL; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX && data->args[i] != NULL; i++) {
 			const char *pos;
 			if ((pos = strstr(data->args[i], "=")) != NULL) {
 				const char *value = pos + 1;
@@ -322,12 +321,12 @@ int cmd_parse(struct cmd_data *data, int argc, const char *argv[]) {
 					return 1;
 				}
 
-				if (key_length > BDL_ARGUMENT_SIZE - 1) {
-					fprintf (stderr, "Error: Argument key %i too long ('%s'), maximum size is %i\n", i, data->args[i], BDL_ARGUMENT_SIZE - 1);
+				if (key_length > CMD_ARGUMENT_SIZE - 1) {
+					fprintf (stderr, "Error: Argument key %i too long ('%s'), maximum size is %i\n", i, data->args[i], CMD_ARGUMENT_SIZE - 1);
 					return 1;
 				}
-				if (value_length > BDL_ARGUMENT_SIZE - 1) {
-					fprintf (stderr, "Error: Argument value %i too long ('%s'), maximum size is %i\n", i, data->args[i], BDL_ARGUMENT_SIZE - 1);
+				if (value_length > CMD_ARGUMENT_SIZE - 1) {
+					fprintf (stderr, "Error: Argument value %i too long ('%s'), maximum size is %i\n", i, data->args[i], CMD_ARGUMENT_SIZE - 1);
 					return 1;
 				}
 
@@ -341,16 +340,16 @@ int cmd_parse(struct cmd_data *data, int argc, const char *argv[]) {
 			}
 	}
 
-	#ifdef BDL_DBG_CMDLINE
+	#ifdef CMD_DBG_CMDLINE
 
 	printf ("Program: %s\n", data->program);
 	printf ("Command: %s\n", data->command);
 
-	for (int i = 0; i < BDL_ARGUMENT_MAX && data->args[i] != NULL; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX && data->args[i] != NULL; i++) {
 		printf ("Argument %i: %s\n", i, data->args[i]);
 	}
 
-	for (int i = 0; i < BDL_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
+	for (int i = 0; i < CMD_ARGUMENT_MAX && data->arg_pairs[i].key[0] != '\0'; i++) {
 		printf ("Argument %i key: %s\n", i, data->arg_pairs[i].key);
 		printf ("Argument %i value: %s\n", i, data->arg_pairs[i].value);
 	}

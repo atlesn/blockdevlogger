@@ -32,7 +32,7 @@ int main_loop(struct bdl_session *session, const char *program_name) {
 	while (session->usercount > 0 && !feof(stdin)) {
 		char cmdline[BDL_MAXIMUM_CMDLINE_LENGTH];
 		int argc_new = 0;
-		const char *argv_new[BDL_MAXIMUM_CMDLINE_ARGS];
+		const char *argv_new[CMD_MAXIMUM_CMDLINE_ARGS];
 
 		argv_new[argc_new++] = program_name;
 
@@ -69,8 +69,8 @@ int main_loop(struct bdl_session *session, const char *program_name) {
 						begin++;
 					}
 
-					if (argc_new == BDL_MAXIMUM_CMDLINE_ARGS) {
-						fprintf (stderr, "Maximum command line arguments reached (%i)\n", BDL_MAXIMUM_CMDLINE_ARGS - 1);
+					if (argc_new == CMD_MAXIMUM_CMDLINE_ARGS) {
+						fprintf (stderr, "Maximum command line arguments reached (%i)\n", CMD_MAXIMUM_CMDLINE_ARGS - 1);
 						return 1;
 					}
 
