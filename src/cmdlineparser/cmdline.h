@@ -30,11 +30,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define CMD_ARGUMENT_MAX 8
 #endif
 
-//#ifdef CMD_MAXIMUM_CMDLINE_ARG_SIZE
+#ifdef CMD_MAXIMUM_CMDLINE_ARG_SIZE
 #define CMD_ARGUMENT_SIZE CMD_MAXIMUM_CMDLINE_ARG_SIZE
-//#else
-//#define CMD_ARGUMENT_SIZE 4096
-//#endif 
+#else
+#define CMD_ARGUMENT_SIZE 4096
+#endif 
 
 struct cmd_arg_pair {
 	char key[CMD_ARGUMENT_SIZE];
