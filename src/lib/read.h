@@ -24,8 +24,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdint.h>
 
-#include "../bdl.h"
 #include "io.h"
+#include "../include/bdl.h"
 
 int read_blocks (struct bdl_io_file *device, uint64_t timestamp_gteq, unsigned long int limit);
 

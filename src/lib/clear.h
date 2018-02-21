@@ -22,7 +22,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef BDL_CLEAR_H
 #define BDL_CLEAR_H
 
-#include "../bdl.h"
+#include "../include/bdl.h"
 #include "io.h"
 
 int clear_dev(struct bdl_io_file *io, int *result);

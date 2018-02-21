@@ -20,6 +20,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "io.h"
-#include "../bdl.h"
+#include "../include/bdl.h"
 
 int init_dev(struct bdl_io_file *file, long int blocksize, long int header_pad, char padchar);

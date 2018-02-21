@@ -26,8 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "io.h"
 #include "blocks.h"
-
-struct bdl_io_file;
+#include "../include/bdl.h"
 
 int write_put_block (
 		struct bdl_io_file *session_file,

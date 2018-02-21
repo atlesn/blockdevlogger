@@ -30,6 +30,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "io.h"
 #include "blocks.h"
 #include "crypt.h"
+#include "../include/bdl.h"
 
 int validate_block(const char *all_data, const struct bdl_header *master_header, int *result) {
 	const struct bdl_block_header *header = (struct bdl_block_header *) all_data;

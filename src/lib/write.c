@@ -25,7 +25,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <inttypes.h>
 
-#include "../bdl.h"
 #include "write.h"
 #include "blocks.h"
 #include "defaults.h"
@@ -33,6 +32,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "crypt.h"
 #include "validate.h"
 #include "bdltime.h"
+#include "../include/bdl.h"
 
 #define BDL_DBG_WRITE
 

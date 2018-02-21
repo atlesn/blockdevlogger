@@ -24,7 +24,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 #include <string.h>
 
-#include "../bdl.h"
 #include "cmdline.h"
 #include "init.h"
 #include "defaults.h"
@@ -35,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "session.h"
 #include "read.h"
 #include "clear.h"
+#include "../include/bdl.h"
 
 int bdl_write_block (
 		struct bdl_session *session, const char *data, unsigned long int data_length,

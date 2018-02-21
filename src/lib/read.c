@@ -25,10 +25,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 
-#include "../bdl.h"
 #include "io.h"
 #include "read.h"
 #include "blocks.h"
+#include "../include/bdl.h"
 
 struct read_block_loop_data {
 	uint64_t timestamp_gteq;

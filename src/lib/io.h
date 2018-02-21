@@ -24,7 +24,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 
-struct bdl_io_file;
+#include "../include/bdl.h"
 
 int io_close (struct bdl_io_file *file);
 int io_open(const char *path, struct bdl_io_file *file);

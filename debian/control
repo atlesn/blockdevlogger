@@ -16,3 +16,7 @@ Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Logger which writes to block devices without file system. Command line interface.
 
+Package: block-device-logger-dev
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libblock-device-logger (= 0.1)
+Description: Logger which writes to block devices without file system. Command line interface.

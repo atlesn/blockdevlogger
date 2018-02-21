@@ -32,9 +32,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <linux/fs.h>
 #include <sys/mman.h>
 
-#include "../bdl.h"
 #include "io.h"
 #include "defaults.h"
+#include "../include/bdl.h"
 
 //#define BDL_DEBUG_IO
 

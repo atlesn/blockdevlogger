@@ -23,9 +23,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../bdl.h"
 #include "session.h"
 #include "io.h"
+#include "../include/bdl.h"
 
 void bdl_init_session (struct bdl_session *session) {
 	session->usercount = 0;

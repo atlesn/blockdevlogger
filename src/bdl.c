@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdlib.h>
 #include <string.h>
 
-#include "bdl.h"
+#include "include/bdl.h"
 #include "lib/defaults.h"
 
 int main_loop(struct bdl_session *session, const char *program_name) {
