@@ -25,6 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdint.h>
 
 #include "io.h"
+#include "blocks.h"
 
 int write_put_block (
 		struct io_file *session_file,
@@ -32,6 +33,15 @@ int write_put_block (
 		uint64_t appdata,
 		uint64_t timestamp,
 		unsigned long int faketimestamp
+);
+
+int write_update_hintblock (
+		struct io_file *file,
+		unsigned long int block_position,
+		uint64_t previous_tagged_block_pos,
+		unsigned long int hintblock_position,
+		unsigned long int hintblock_backup_position,
+		const struct bdl_header *header
 );
 
 int write_put_and_pad_block (

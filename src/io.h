@@ -47,6 +47,7 @@ struct io_file {
 
 int io_close (struct io_file *file);
 int io_open(const char *path, struct io_file *file);
+int io_sync(struct io_file *file);
 int io_write_block(struct io_file *file, unsigned long int position, const char *data, unsigned long int data_length, const char *padding, unsigned long int padding_length, int verbose);
 int io_read_block(struct io_file *file, unsigned long int position, char *data, unsigned long int data_length);
 

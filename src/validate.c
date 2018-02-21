@@ -62,7 +62,12 @@ int validate_block(const char *all_data, const struct bdl_header *master_header,
 	return 0;
 }
 
-int validate_hint (const struct bdl_hint_block *header_orig, const struct bdl_header *master_header, int *result) {
+int validate_hintblock (
+		const struct bdl_hint_block *header_orig,
+		unsigned long int position,
+		const struct bdl_header *master_header,
+		int *result
+) {
 	struct bdl_hint_block header = *header_orig;
 
 	header.hash = 0;
@@ -76,6 +81,11 @@ int validate_hint (const struct bdl_hint_block *header_orig, const struct bdl_he
 	) {
 		fprintf (stderr, "Error while validating hash for hint block\n");
 		return 1;
+	}
+
+	if (header_orig->pad != 0) {
+		*result = 1;
+		return 0;
 	}
 
 	return 0;

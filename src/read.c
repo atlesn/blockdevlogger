@@ -35,7 +35,7 @@ struct read_block_loop_data {
 	unsigned long int result_count;
 };
 
-//#define BDL_READ_DEBUG
+#define BDL_READ_DEBUG
 
 int read_block_loop_callback(struct bdl_block_loop_callback_data *data, int *result) {
 	struct read_block_loop_data *loop_data = (struct read_block_loop_data *) data->argument_ptr;
@@ -222,6 +222,11 @@ int read_blocks (struct io_file *device, uint64_t timestamp_gteq, unsigned long 
 		printf ("Found oldest hintblock at %lu highest timestamp %" PRIu64 "\n",
 				oldest_location.hintblock_state.location, oldest_location.hintblock_state.highest_timestamp
 		);
+		if (oldest_location.hintblock_state.highest_timestamp == 0) {
+			fprintf (stderr, "Bug: Smallest timestamp found was zero\n");
+			exit (EXIT_FAILURE);
+
+		}
 	}
 	else {
 		printf ("No hintblocks found\n");

@@ -18,6 +18,9 @@ block before it. The hint blocks and other blocks are not pre-
 initialized, and BDL merely considers any block with invalid checksum
 to be free space.
 
+Backup hint blocks are placed half way inside each region. If a
+hintblock is corrupt, we attempt to recover the backup.
+
 The data blocks have a timestamp and a user defined identifier. When
 writing a new entry, BDL searches the hint blocks to find unused
 space. If the device was full, the oldest data block is overwritten,

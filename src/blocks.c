@@ -31,6 +31,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "crypt.h"
 #include "io.h"
 #include "validate.h"
+#include "write.h"
 
 int block_hintblock_get_last_block (
 		struct io_file *file,
@@ -110,10 +111,45 @@ int block_get_valid_hintblock (
 	}
 
 	int hash_return;
-	if (validate_hint (hintblock, master_header, result) != 0) {
+	if (validate_hintblock (hintblock, pos, master_header, result) != 0) {
 		fprintf (stderr, "Error while checking hash for hint block at %lu\n", pos);
 		return 1;
 	}
+
+	return 0;
+}
+
+int block_hintblock_recover_backup (
+		struct io_file *file,
+		const struct bdl_header *master_header,
+		struct bdl_hintblock_state *state,
+		int *result
+) {
+	if (block_get_valid_hintblock(file, state->backup_location, master_header, &state->hintblock, result) != 0) {
+		fprintf (stderr, "Error while reading backup hint block area at %lu\n", state->backup_location);
+		return 1;
+	}
+
+	if (*result != 0) {
+		return 0;
+	}
+
+	printf ("Recovering backup from position %lu to %lu\n", state->backup_location, state->location);
+
+	if (write_update_hintblock (
+			file,
+			state->hintblock.previous_block_pos,
+			state->hintblock.previous_tagged_block_pos,
+			state->location,
+			state->location - BDL_HINTBLOCK_BACKUP_POSITION,
+			master_header
+	) != 0) {
+		*result = 1;
+		fprintf(stderr, "Error while recovering backup hintblock\n");
+		return 1;
+	}
+
+	io_sync(file);
 
 	return 0;
 }
@@ -127,6 +163,7 @@ int block_get_hintblock_state (
 		struct bdl_hintblock_state *state
 ) {
 	state->valid = 0;
+	state->backup_location = pos + BDL_HINTBLOCK_BACKUP_POSITION;
 	state->blockstart_min = blockstart_min;
 	state->blockstart_max = blockstart_max;
 	state->highest_timestamp = 0;
@@ -139,15 +176,25 @@ int block_get_hintblock_state (
 	}
 
 	if (result != 0) {
-		state->valid = 0;
-		return 0;
+		if (block_hintblock_recover_backup(file, master_header, state, &result) != 0) {
+			fprintf (stderr, "Error while recovering hintblock backup while getting hintblock state\n");
+			return 1;
+		}
+
+		if (result == 0) {
+			if (block_get_valid_hintblock(file, pos, master_header, &state->hintblock, &result) != 0) {
+				fprintf (stderr, "Error while reading hint block area at %lu after recovering from backup\n", pos);
+				return 1;
+			}
+		}
+		else {
+			return 0;
+		}
 	}
 	else if (state->hintblock.previous_block_pos > blockstart_max || state->hintblock.previous_block_pos < blockstart_min) {
-		state->valid = 0;
 		return 0;
 	}
 
-	state->valid = 1;
 
 	int block_result;
 	struct bdl_block_header block;
@@ -157,10 +204,10 @@ int block_get_hintblock_state (
 	}
 
 	if (block_result != 0) {
-		state->valid = 0;
 		return 0;
 	}
 
+	state->valid = 1;
 	state->highest_timestamp = block.timestamp;
 
 #ifdef BDL_DBG_WRITE
@@ -335,6 +382,10 @@ int block_loop_blocks (
 			i <= hintblock_state->hintblock.previous_block_pos;
 			i += header->block_size
 	) {
+		if (i == hintblock_state->backup_location) {
+			printf ("Skipping backup hintblock at %lu", i);
+			continue;
+		}
 
 		if (block_get_validate_block (
 				file, i, header,

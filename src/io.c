@@ -168,6 +168,39 @@ int io_update_sync_queue(struct io_sync_queue *sync_queue, void *start, void *en
 	return 0;
 }
 
+int io_sync(struct io_file *file) {
+	for (int i = 0; i < file->sync_queue.count; i++) {
+		struct io_sync_queue_entry *entry = &file->sync_queue.entries[i];
+
+		// Align to page size
+		uintptr_t address_fix = (uintptr_t) entry->start_address;
+
+		// Mask with 10 ones at the end if page size is 4096
+		uintptr_t address_mask = getpagesize() - 1;
+
+		// Invert mask
+		address_mask = ~address_mask;
+
+		// Round address with the mask by removing the end
+		address_fix = address_fix & address_mask;
+		entry->start_address = (void *) address_fix;
+
+		printf ("B: Sync %llu - %lu\n", (long long unsigned int) entry->start_address, entry->end_address - entry->start_address);
+
+		if (entry->start_address < file->memorymap) {
+			entry->start_address = file->memorymap;
+		}
+
+		if (msync(entry->start_address, entry->end_address - entry->start_address, MS_SYNC) != 0) {
+			fprintf (stderr, "Warning: Error while syncing with device, changes might have been lost: %s\n", strerror(errno));
+		}
+	}
+	file->unsynced_write_bytes = 0;
+	file->sync_queue.count = 0;
+
+	return 0;
+}
+
 int io_write(struct io_file *file, const void *source, unsigned int length) {
 	if (file->seek + length >= file->size) {
 		fprintf (stderr, "Attempted to write outside file\n");
@@ -179,34 +212,7 @@ int io_write(struct io_file *file, const void *source, unsigned int length) {
 
 	file->unsynced_write_bytes += length;
 	if (io_update_sync_queue(&file->sync_queue, write_location, write_location + length) || file->unsynced_write_bytes >= BDL_MMAP_SYNC_SIZE) {
-		for (int i = 0; i < file->sync_queue.count; i++) {
-			struct io_sync_queue_entry *entry = &file->sync_queue.entries[i];
-
-			// Align to page size
-			uintptr_t address_fix = (uintptr_t) entry->start_address;
-
-			// Mask with 10 ones at the end if page size is 4096
-			uintptr_t address_mask = getpagesize() - 1;
-
-			// Invert mask
-			address_mask = ~address_mask;
-
-			// Round address with the mask by removing the end
-			address_fix = address_fix & address_mask;
-			entry->start_address = (void *) address_fix;
-
-			printf ("B: Sync %llu - %lu\n", (long long unsigned int) entry->start_address, entry->end_address - entry->start_address);
-
-			if (entry->start_address < file->memorymap) {
-				entry->start_address = file->memorymap;
-			}
-
-			if (msync(entry->start_address, entry->end_address - entry->start_address, MS_SYNC) != 0) {
-				fprintf (stderr, "Warning: Error while syncing with device, changes might have been lost: %s\n", strerror(errno));
-			}
-		}
-		file->unsynced_write_bytes = 0;
-		file->sync_queue.count = 0;
+		io_sync(file);
 	}
 
 	return 0;

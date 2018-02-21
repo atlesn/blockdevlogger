@@ -23,6 +23,13 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "io.h"
 
 int validate_dev (struct io_file *session_file, int *result);
+int validate_hintblock (
+		const struct bdl_hint_block *header_orig,
+		unsigned long int position,
+		const struct bdl_header *master_header,
+		int *result
+);
+
 int validate_block(const char *all_data, const struct bdl_header *master_header, int *result);
-int validate_hint (const struct bdl_hint_block *header_orig, const struct bdl_header *master_header, int *result);
+
 int validate_header (const struct bdl_header *header, int file_size, int *result);

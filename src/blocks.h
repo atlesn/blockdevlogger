@@ -80,7 +80,7 @@ struct bdl_hint_block {
 	/* Future use? */
 	uint32_t pad;
 
-	/* Hash of header and data with hash itself being zero */
+	/* Hash of header and data with hash itself being zero. Do not place hash at same location in struct as block header. */
 	uint32_t hash;
 };
 
@@ -93,6 +93,7 @@ struct bdl_hintblock_state {
 	unsigned long int blockstart_min;
 	unsigned long int blockstart_max;
 	unsigned long int location;
+	unsigned long int backup_location;
 	uint64_t highest_timestamp;
 	struct bdl_hint_block hintblock;
 };

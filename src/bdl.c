@@ -43,6 +43,8 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		return 1;
 	}
 
+	// TODO : Write recover procedure and auto recover from hintblocks
+
 	if (argc == 1 || cmd_match(&session->cmd_data, "help")) {
 		help();
 	}
@@ -188,6 +190,8 @@ int interpret_command (struct session *session, int argc, const char *argv[]) {
 		const char *timestamp_string = cmd_get_value(&session->cmd_data, "timestamp");
 		const char *faketimestamp_string = cmd_get_value(&session->cmd_data, "faketimestamp");
 		const char *data = cmd_get_last_argument(&session->cmd_data);
+
+		// TODO : Create synced write argument, sync after every write
 
 		uint64_t appdata = 0;
 		uint64_t timestamp = 0;

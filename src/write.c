@@ -33,7 +33,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "validate.h"
 #include "bdltime.h"
 
-//#define BDL_DBG_WRITE
+#define BDL_DBG_WRITE
 
 int write_find_location_small(struct io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;
@@ -214,7 +214,9 @@ int write_put_and_pad_block (struct io_file *file, int pos, const char *data, in
 int write_update_hintblock (
 		struct io_file *file,
 		unsigned long int block_position,
+		uint64_t previous_tagged_block_pos,
 		unsigned long int hintblock_position,
+		unsigned long int hintblock_backup_position,
 		const struct bdl_header *header
 
 ) {
@@ -235,6 +237,10 @@ int write_update_hintblock (
 	hint_block.previous_block_pos = block_position;
 	hint_block.hash = 0;
 
+	if (previous_tagged_block_pos != 0) {
+		hint_block.previous_tagged_block_pos = previous_tagged_block_pos;
+	}
+
 	if (crypt_hash_data(
 			(const char *) &hint_block,
 			sizeof(hint_block),
@@ -254,6 +260,19 @@ int write_update_hintblock (
 	) {
 		fprintf (stderr, "Error while putting hint block\n");
 		return 1;
+	}
+
+	// Write a backup?
+	if (hintblock_backup_position != hintblock_position) {
+		if (write_update_hintblock(
+				file,
+				block_position, previous_tagged_block_pos,
+				hintblock_backup_position, hintblock_backup_position,
+				header
+		) != 0) {
+			fprintf (stderr, "Error while writing backup hint block\n");
+			return 1;
+		}
 	}
 
 	return 0;
@@ -286,7 +305,6 @@ int write_put_block (
 		fprintf (stderr, "Error while finding write location for device\n");
 		return 1;
 	}
-
 
 	// Work on data block
 	struct bdl_block_header block_header;
@@ -338,6 +356,11 @@ int write_put_block (
 		exit (EXIT_FAILURE);
 	}
 
+	if (location.block_location == location.hintblock_state.backup_location) {
+		fprintf (stderr, "Bug: Attempted to place block on hintblock backup location\n");
+		exit (EXIT_FAILURE);
+	}
+
 	// Checksum and write the block
 	unsigned long int block_total_size = sizeof(block_header) + data_length;
 	char hash_data[block_total_size];
@@ -367,7 +390,16 @@ int write_put_block (
 		return 1;
 	}
 
-
 	// Update hintblock
-	return write_update_hintblock(session_file, location.block_location, location.hintblock_state.location, &header);
+	if (write_update_hintblock(
+			session_file,
+			location.block_location, 0,
+			location.hintblock_state.location, location.hintblock_state.backup_location,
+			&header
+	) != 0) {
+		fprintf (stderr, "Error while updating hintblock while writing new block\n");
+		return 1;
+	}
+
+	return 0;
 }
