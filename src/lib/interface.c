@@ -36,11 +36,79 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "read.h"
 #include "clear.h"
 
+int bdl_write_block (
+		struct bdl_session *session, const char *data, unsigned long int data_length,
+		uint64_t appdata, uint64_t timestamp, unsigned long int faketimestamp
+);
+
+int bdl_clear_dev (struct bdl_session *session, int *result) {
+	return clear_dev(&session->device, result);
+}
+
+int bdl_validate_dev (struct bdl_session *session, int *result) {
+	return validate_dev(&session->device, result);
+}
+
+int bdl_read_blocks (
+		struct bdl_session *session,
+		uint64_t timestamp_gteq, unsigned long int limit
+) {
+	return read_blocks(&session->device, timestamp_gteq, limit);
+}
+
+int bdl_write_block (
+		struct bdl_session *session, const char *data, unsigned long int data_length,
+		uint64_t appdata, uint64_t timestamp, unsigned long int faketimestamp
+) {
+	return write_put_block(
+		&session->device,
+		data, data_length,
+		appdata,
+		timestamp,
+		faketimestamp
+	);
+}
+
+int bdl_init_dev (
+		struct bdl_session *session,
+		unsigned long int blocksize, unsigned long int header_pad, char padchar
+) {
+	if (blocksize == 0) {
+		blocksize = BDL_DEFAULT_BLOCKSIZE;
+	}
+	if (header_pad == 0) {
+		header_pad = BDL_DEFAULT_HEADER_PAD;
+	}
+
+	if (blocksize > BDL_MAXIMUM_BLOCKSIZE) {
+		fprintf(stderr, "Error: Blocksize was too large, maximum is %i\n", BDL_MAXIMUM_BLOCKSIZE);
+		return 1;
+	}
+	if (blocksize < BDL_MINIMUM_BLOCKSIZE) {
+		fprintf(stderr, "Error: Blocksize was too small, minimum is %i\n", BDL_MINIMUM_BLOCKSIZE);
+		return 1;
+	}
+	if (blocksize % BDL_BLOCKSIZE_DIVISOR != 0) {
+		fprintf(stderr, "Error: Blocksize needs to be dividable by %i\n", BDL_BLOCKSIZE_DIVISOR);
+		return 1;
+	}
+	if (header_pad < BDL_MINIMUM_HEADER_PAD) {
+		fprintf(stderr, "Error: Header pad was too small, minimum is %i\n", BDL_MINIMUM_HEADER_PAD);
+		return 1;
+	}
+	if (header_pad % BDL_HEADER_PAD_DIVISOR != 0) {
+		fprintf(stderr, "Error: Header pad needs to be dividable by %i\n", BDL_HEADER_PAD_DIVISOR);
+		return 1;
+	}
+
+	return init_dev(&session->device, blocksize, header_pad, padchar);
+}
+
 void help() {
 	printf ("Command was help\n");
 }
 
-int interpret_command (struct bdl_session *session, int argc, const char *argv[]) {
+int bdl_interpret_command (struct bdl_session *session, int argc, const char *argv[]) {
 	struct cmd_data cmd_data;
 
 	if (cmd_parse(&cmd_data, argc, argv) != 0) {
@@ -266,8 +334,8 @@ int interpret_command (struct bdl_session *session, int argc, const char *argv[]
 		const char *hpad_string = cmd_get_value(&cmd_data, "hpad");
 		const char *padchar_string = cmd_get_value(&cmd_data, "padchar");
 
-		long int blocksize = BDL_DEFAULT_BLOCKSIZE;
-		long int header_pad = BDL_DEFAULT_HEADER_PAD;
+		unsigned long int blocksize = BDL_DEFAULT_BLOCKSIZE;
+		unsigned long int header_pad = BDL_DEFAULT_HEADER_PAD;
 		char padchar = BDL_DEFAULT_PAD_CHAR;
 
 		// Parse block size argument
@@ -277,20 +345,14 @@ int interpret_command (struct bdl_session *session, int argc, const char *argv[]
 				return 1;
 			}
 
-			blocksize = cmd_get_integer(&cmd_data, "bs");
+			long int blocksize_tmp = cmd_get_integer(&cmd_data, "bs");
 
-			if (blocksize > BDL_MAXIMUM_BLOCKSIZE) {
-				fprintf(stderr, "Error: Blocksize was too large, maximum is %i\n", BDL_MAXIMUM_BLOCKSIZE);
+			if (blocksize_tmp < 0) {
+				fprintf (stderr, "Error: Blocksize cannot be negative\n");
 				return 1;
 			}
-			else if (blocksize < BDL_MINIMUM_BLOCKSIZE) {
-				fprintf(stderr, "Error: Blocksize was too small, minimum is %i\n", BDL_MINIMUM_BLOCKSIZE);
-				return 1;
-			}
-			else if (blocksize % BDL_BLOCKSIZE_DIVISOR != 0) {
-				fprintf(stderr, "Error: Blocksize needs to be dividable by %i\n", BDL_BLOCKSIZE_DIVISOR);
-				return 1;
-			}
+
+			blocksize = blocksize_tmp;
 		}
 
 		// Parse header pad argument
@@ -300,16 +362,14 @@ int interpret_command (struct bdl_session *session, int argc, const char *argv[]
 				return 1;
 			}
 
-			header_pad = cmd_get_integer(&cmd_data, "hpad");
+			long int header_pad_tmp = cmd_get_integer(&cmd_data, "hpad");
 
-			if (header_pad < BDL_MINIMUM_HEADER_PAD) {
-				fprintf(stderr, "Error: Header pad was too small, minimum is %i\n", BDL_MINIMUM_HEADER_PAD);
+			if (header_pad_tmp < 0) {
+				fprintf (stderr, "Error: Header pad cannot be negative\n");
 				return 1;
 			}
-			if (header_pad % BDL_HEADER_PAD_DIVISOR != 0) {
-				fprintf(stderr, "Error: Header pad needs to be dividable by %i\n", BDL_HEADER_PAD_DIVISOR);
-				return 1;
-			}
+
+			header_pad = header_pad_tmp;
 		}
 
 		// Parse pad characher argument
@@ -332,7 +392,8 @@ int interpret_command (struct bdl_session *session, int argc, const char *argv[]
 			return 1;
 		}
 
-		if (init_dev(&session->device, blocksize, header_pad, padchar)) {
+		/* Don't call init_dev directly as we need to perform more checks */
+		if (bdl_init_dev(session, blocksize, header_pad, padchar)) {
 			fprintf (stderr, "Device intialization failed\n");
 			bdl_close_session(session);
 			return 1;

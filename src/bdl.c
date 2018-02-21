@@ -78,7 +78,7 @@ int main_loop(struct bdl_session *session, const char *program_name) {
 					begin = end + 1;
 				}
 
-				ret = interpret_command(session, argc_new, argv_new);
+				ret = bdl_interpret_command(session, argc_new, argv_new);
 
 				if (ret == 1) {
 					return 1;
@@ -107,7 +107,7 @@ int main(int argc, const char *argv[]) {
 
 	int ret;
 
-	ret = interpret_command(&session, argc, argv);
+	ret = bdl_interpret_command(&session, argc, argv);
 
 	/* And open command increments the user count. Run interactive. */
 	if (session.usercount > 0) {
