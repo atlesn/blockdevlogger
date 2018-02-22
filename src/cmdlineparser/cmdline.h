@@ -36,6 +36,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define CMD_ARGUMENT_SIZE 4096
 #endif 
 
+#define CMD_CONFIG_DEFAULTS 0
+#define CMD_CONFIG_NOCOMMAND 1
+
 struct cmd_arg_pair {
 	char key[CMD_ARGUMENT_SIZE];
 	char value[CMD_ARGUMENT_SIZE];
@@ -57,7 +60,7 @@ struct cmd_data {
 	struct cmd_arg_pair arg_pairs[CMD_ARGUMENT_MAX];
 };
 
-int cmd_parse					(struct cmd_data *data, const int argc, const char *argv[]);
+int cmd_parse					(struct cmd_data *data, const int argc, const char *argv[], unsigned long int config);
 int cmd_match					(struct cmd_data *data, const char *test);
 
 int cmd_convert_hex_64				(struct cmd_data *data, const char *key);

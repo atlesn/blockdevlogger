@@ -27,6 +27,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "lib/defaults.h"
 #include "cmdlineparser/cmdline.h"
 
+#ifdef HAVE_CONFIG_H
+#include "../config.h"
+#endif
+
 int main_loop(struct bdl_session *session, const char *program_name) {
 	int ret = 1;
 

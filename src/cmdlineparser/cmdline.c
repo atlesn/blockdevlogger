@@ -283,17 +283,25 @@ const char *cmd_get_last_argument(struct cmd_data *data) {
 	return NULL;
 }
 
-int cmd_parse(struct cmd_data *data, int argc, const char *argv[]) {
+int cmd_parse(struct cmd_data *data, int argc, const char *argv[], unsigned long int config) {
+	cmd_init(data);
+
 	data->program = argv[0];
 	data->command = cmd_help;
-
-	cmd_init(data);
 
 	if (argc <= 1) {
 		return 0;
 	}
 
-	data->command = argv[1];
+	int argc_begin = 2;
+
+	if ((config & CMD_CONFIG_NOCOMMAND) > 0) {
+		data->command = cmd_blank_argument;
+		argc_begin = 1;
+	}
+	else if (argc > 1) {
+		data->command = argv[1];
+	}
 
 	// Initialize all to empty strings
 	for (int i = 0; i < CMD_ARGUMENT_MAX; i++) {
@@ -301,7 +309,7 @@ int cmd_parse(struct cmd_data *data, int argc, const char *argv[]) {
 	}
 
 	// Store pointers to all arguments
-	int arg_pos = 2;
+	int arg_pos = argc_begin;
 	for (int i = 0; i < CMD_ARGUMENT_MAX && arg_pos < argc; i++) {
 		data->args[i] = argv[arg_pos];
 		arg_pos++;

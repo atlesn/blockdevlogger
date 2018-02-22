@@ -5,6 +5,7 @@ Makefile.in
 *.o
 *.so
 *.lo
+*.lo
 .deps
 /config.h
 

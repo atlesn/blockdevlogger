@@ -111,7 +111,7 @@ void help() {
 int bdl_interpret_command (struct bdl_session *session, int argc, const char *argv[]) {
 	struct cmd_data cmd_data;
 
-	if (cmd_parse(&cmd_data, argc, argv) != 0) {
+	if (cmd_parse(&cmd_data, argc, argv, CMD_CONFIG_DEFAULTS) != 0) {
 		return 1;
 	}
 
