@@ -340,7 +340,7 @@ int write_put_block (
 
 	// Check data length
 	if (data_length > header.block_size - sizeof(block_header)) {
-		fprintf(stderr, "Length of data was to large to fit inside a block, length was %lu while maximum size is %lu\n",
+		fprintf(stderr, "Length of data was to large to fit inside a block, length was %lu while maximum size is %" PRIu64 "\n",
 				data_length, (header.block_size - sizeof(block_header))
 		);
 		return 1;

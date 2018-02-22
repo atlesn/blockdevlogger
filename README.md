@@ -48,17 +48,18 @@ corrupted, no operations may be performed. If a hint block or
 data block is corrupted, it is considered free space.
 
 ## COMMANDS
-### bdl init dev={DEVICE} [bs=NUM] [hpad=NUM] [padchar=HEX8]
+### bdl init dev={DEVICE[@SIZE[kMG]]} [bs=NUM] [hpad=NUM] [padchar=HEX8]
 
 Initializes a device by writing a new header.
 ```
-dev			Device or file to initialize
-bs			The fixed size of blocks and hint blocks,
-			must be dividable by 256
+dev		Device or file to initialize
+		May specify @SIZE to reduce the space actually used
+bs		The fixed size of blocks and hint blocks,
+		must be dividable by 256
 hpad		The size of the master header, can be used to change the
-			position of hint blocks if desirable.
+		position of hint blocks if desirable.
 padchar		The character to use for padding blocks in hex, defaults to 0xff.
-			Correct value may relieve strain on some memory chips.
+		Correct value may relieve strain on some memory chips.
 ```
 ### bdl write dev={DEVICE} [timestamp=NUM] [faketimestamp=NUM] [appdata=HEX64] {DATA} 
 

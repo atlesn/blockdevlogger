@@ -41,7 +41,7 @@ struct bdl_io_sync_queue {
 
 struct bdl_io_file {
 	FILE *file;
-	unsigned long int size;
+	unsigned long long int size;
 	unsigned long int seek;
 	unsigned long int unsynced_write_bytes;
 	void *memorymap;

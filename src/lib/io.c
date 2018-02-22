@@ -38,7 +38,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 //#define BDL_DEBUG_IO
 
-int io_get_file_size(FILE *file, const char *filepath, unsigned long int *size) {
+int io_get_file_size(FILE *file, const char *filepath, unsigned long long int *size) {
 	struct stat params;
 
 	if (stat(filepath, &params) != 0) {
@@ -47,7 +47,7 @@ int io_get_file_size(FILE *file, const char *filepath, unsigned long int *size) 
 	}
 
 	if (S_ISBLK(params.st_mode)) {
-		unsigned long int buf;
+		unsigned long long int buf;
 		if (ioctl(fileno(file), BLKGETSIZE64, &buf) != 0) {
 			fprintf (stderr, "Error while getting size of block device: %s\n", strerror(errno));
 			return 1;
@@ -85,27 +85,87 @@ int io_close (struct bdl_io_file *file) {
 }
 
 int io_open(const char *path, struct bdl_io_file *file) {
-	file->file = fopen(path, "r+");
+	char new_path[strlen(path) + 1];
+	sprintf (new_path, "%s", path);
+
+	char *at;
+	char *custom_size_string = NULL;
+	if ((at = strchr (new_path, '@')) != NULL) {
+		custom_size_string = at + 1;
+		*at = '\0';
+	}
+
+	file->file = fopen(new_path, "r+");
 	file->seek = 0;
 	file->unsynced_write_bytes = 0;
 
 	file->sync_queue.count = 0;
 
 	if (file->file == NULL) {
-		fprintf (stderr, "Could not open device %s in mode r/w: %s\n", path, strerror(errno));
+		fprintf (stderr, "Could not open device %s in mode r/w: %s\n", new_path, strerror(errno));
 		return 1;
 	}
 
-	if (io_get_file_size(file->file, path, &file->size) != 0) {
+	if (io_get_file_size(file->file, new_path, &file->size) != 0) {
 		fprintf (stderr, "Error while getting file size of %s\n", path);
 		return 1;
 	}
 
+	// Check for custom size
+	if (custom_size_string != NULL) {
+		char *size_string = at + 1;
+		*at = '\0';
+
+		if (strlen (size_string) <= 0) {
+			fprintf (stderr, "Syntax error 1 in size definition (after @)\n");
+			return 1;
+		}
+
+		char *end;
+		unsigned long long int size_tmp = strtoul (size_string, &end, 10);
+
+		if (end == size_string) {
+			fprintf (stderr, "Syntax error 2 in size definition (after @)\n");
+			return 1;
+		}
+
+		unsigned long long int multiplier = 1;
+		if (*end == 'G' || *end == 'g') {
+			multiplier = 1024 * 1024 * 1024;
+			end++;
+		}
+		else if (*end == 'M' || *end == 'm') {
+			multiplier = 1024 * 1024;
+			end++;
+		}
+		else if (*end == 'K' || *end == 'k') {
+			multiplier = 1024;
+			end++;
+		}
+
+		if (*end != '\0') {
+			fprintf (stderr, "Syntax error 3 in size definition (after @)\n");
+			return 1;
+		}
+
+		size_tmp *= multiplier;
+
+		printf ("New size: %llu, Old size: %llu\n", size_tmp, file->size);
+
+		if (size_tmp > file->size) {
+			fprintf (stderr, "Costum size of file was larger than original size (%llu > %llu)\n", size_tmp, file->size);
+			return 1;
+		}
+
+		file->size = size_tmp;
+	}
+
 	file->memorymap = mmap(NULL, file->size, PROT_READ|PROT_WRITE, MAP_SHARED, fileno(file->file), 0);
 	if (file->memorymap == MAP_FAILED) {
-		fprintf (stderr, "Memory mapping failed: %s\n", strerror(errno));
+		fprintf (stderr, "Memory mapping failed, file might be too big: %s\n", strerror(errno));
 		return 1;
 	}
+
 
 	return 0;
 }
@@ -185,8 +245,6 @@ int io_sync(struct bdl_io_file *file) {
 		// Round address with the mask by removing the end
 		address_fix = address_fix & address_mask;
 		entry->start_address = (void *) address_fix;
-
-		printf ("B: Sync %llu - %lu\n", (long long unsigned int) entry->start_address, entry->end_address - entry->start_address);
 
 		if (entry->start_address < file->memorymap) {
 			entry->start_address = file->memorymap;
