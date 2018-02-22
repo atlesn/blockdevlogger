@@ -36,7 +36,7 @@ struct read_block_loop_data {
 	unsigned long int result_count;
 };
 
-#define BDL_READ_DEBUG
+//#define BDL_READ_DEBUG
 
 int read_block_loop_callback(struct bdl_block_loop_callback_data *data, int *result) {
 	struct read_block_loop_data *loop_data = (struct read_block_loop_data *) data->argument_ptr;

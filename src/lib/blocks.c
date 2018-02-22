@@ -384,7 +384,6 @@ int block_loop_blocks (
 			i += header->block_size
 	) {
 		if (i == hintblock_state->backup_location) {
-			printf ("Skipping backup hintblock at %lu", i);
 			continue;
 		}
 

@@ -74,12 +74,16 @@ int write_check_free_hintblock (
 
 			location->block_location = state->hintblock.previous_block_pos + master_header->block_size;
 
+			if (location->block_location == state->backup_location) {
+				location->block_location += master_header->block_size;
+			}
+
 			*result = 0;
 		}
 		else {
 
 #ifdef BDL_DBG_WRITE
-				printf ("Hint block is full\n");
+			printf ("Hint block is full\n");
 #endif
 
 			location->block_location = state->blockstart_min;
@@ -341,7 +345,7 @@ int write_put_block (
 	// Check data length
 	if (data_length > header.block_size - sizeof(block_header)) {
 		fprintf(stderr, "Length of data was to large to fit inside a block, length was %lu while maximum size is %" PRIu64 "\n",
-				data_length, (header.block_size - sizeof(block_header))
+			data_length, (header.block_size - sizeof(block_header))
 		);
 		return 1;
 	}
