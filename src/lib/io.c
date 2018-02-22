@@ -74,12 +74,16 @@ int io_get_file_size(FILE *file, const char *filepath, unsigned long long int *s
 
 int io_close (struct bdl_io_file *file) {
 	int ret = 0;
-	if (msync(file->memorymap, file->size, MS_SYNC) != 0) {
-		ret = 1;
-		fprintf (stderr, "Warning: Error while syncing with device, changes might have been lost: %s\n", strerror(errno));
+
+	if (file->memorymap != NULL) {
+		if (msync(file->memorymap, file->size, MS_SYNC) != 0) {
+			ret = 1;
+			fprintf (stderr, "Warning: Error while syncing with device, changes might have been lost: %s\n", strerror(errno));
+		}
+
+		munmap(file->memorymap, file->size);
 	}
 
-	munmap(file->memorymap, file->size);
 	fclose (file->file);
 	return ret;
 }
@@ -163,7 +167,9 @@ int io_open(const char *path, struct bdl_io_file *file) {
 	file->memorymap = mmap(NULL, file->size, PROT_READ|PROT_WRITE, MAP_SHARED, fileno(file->file), 0);
 	if (file->memorymap == MAP_FAILED) {
 		fprintf (stderr, "Memory mapping failed, file might be too big: %s\n", strerror(errno));
-		return 1;
+		fprintf (stderr, "Fallback to standard IO\n");
+		file->memorymap = NULL;
+		return 0;
 	}
 
 
@@ -178,6 +184,13 @@ int io_seek(struct bdl_io_file *file, unsigned long int pos) {
 
 	file->seek = pos;
 
+	if (file->memorymap == NULL) {
+		if (fseek(file->file, pos, SEEK_SET) != 0) {
+			fprintf (stderr, "Could not seek: %s\n", strerror(errno));
+			return 1;
+		}
+	}
+
 	return 0;
 }
 
@@ -185,6 +198,16 @@ int io_read(struct bdl_io_file *file, void *target, unsigned int length) {
 	if (file->seek + length >= file->size) {
 		fprintf (stderr, "Attempted to read outside file\n");
 		return 1;
+	}
+
+
+	if (file->memorymap == NULL) {
+		unsigned long bytes = fread(target, 1, length, file->file);
+		if (bytes != length) {
+			fprintf (stderr, "Error while reading: %s\n", strerror(ferror(file->file)));
+			return 1;
+		}
+		return 0;
 	}
 
 	memcpy (target, file->memorymap+file->seek, length);
@@ -264,6 +287,15 @@ int io_write(struct bdl_io_file *file, const void *source, unsigned int length) 
 	if (file->seek + length >= file->size) {
 		fprintf (stderr, "Attempted to write outside file\n");
 		return 1;
+	}
+
+	if (file->memorymap == NULL) {
+		unsigned long bytes = fwrite(source, 1, length, file->file);
+		if (bytes != length) {
+			fprintf (stderr, "Error while writing: %s\n", strerror(ferror(file->file)));
+			return 1;
+		}
+		return 0;
 	}
 
 	void *write_location = file->memorymap + file->seek;
