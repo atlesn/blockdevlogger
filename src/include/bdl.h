@@ -104,6 +104,25 @@ int bdl_write_block (
 #define BDL_WRITE_ERR_IO			4 // IO error
 #define BDL_WRITE_ERR_CORRUPT		5 // Corrupt device
 
+/* ****
+ * Update the application data field in blocks. Specify the lowest timestamp to search,
+ * and a match function which returns the below defined update struct with a new appdata
+ * field and update field set to 1 for update and 0 for don't update. Puts the number
+ * of updated fields in *result, and returns 0 for success and > 0 for error.
+ * ****/
+struct bdl_update_info {
+	int do_update;
+	uint64_t new_appdata;
+};
+
+int bdl_update_application_data (
+	struct bdl_session *session,
+	uint64_t timestamp_min,
+	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data),
+	void *arg,
+	int *result
+);
+
 
 /* ****
  * Initialize a new device (must be opened first with bdl_start_session). Device must

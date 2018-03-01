@@ -69,6 +69,16 @@ int bdl_write_block (
 	);
 }
 
+int bdl_update_application_data (
+	struct bdl_session *session,
+	uint64_t timestamp_min,
+	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data),
+	void *arg,
+	int *result
+) {
+	return write_update_application_data (&session->device, timestamp_min, test, arg, result);
+}
+
 int bdl_init_dev (
 		struct bdl_session *session,
 		unsigned long int blocksize, unsigned long int header_pad, char padchar

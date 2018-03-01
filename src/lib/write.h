@@ -36,6 +36,14 @@ int write_put_block (
 		unsigned long int faketimestamp
 );
 
+int write_update_application_data (
+	struct bdl_io_file *session_file,
+	uint64_t timestamp_min,
+	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data),
+	void *arg,
+	int *result
+);
+
 int write_update_hintblock (
 		struct bdl_io_file *file,
 		unsigned long int block_position,

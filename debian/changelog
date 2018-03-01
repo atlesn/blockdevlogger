@@ -1,6 +1,7 @@
 block-device-logger (0.2) unstable; urgency=medium
 
   * Create different return values from write function error conditions
+  * Create new update block function (API only)
 
  -- Atle Solbakken <atle@goliathdns.no>  Thu, 01 Mar 2018 18:42:11 +0100
 

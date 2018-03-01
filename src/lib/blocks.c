@@ -475,3 +475,66 @@ void block_dump (const struct bdl_block_header *header, unsigned long int positi
 		exit(EXIT_FAILURE);
 	}
 }
+
+struct block_find_smallest_hintblock_loop_data {
+	uint64_t timestamp_gteq;
+	uint64_t smallest_timestamp;
+	struct bdl_hintblock_state smallest_state;
+};
+
+int block_find_oldest_hintblock_loop_callback (
+	struct bdl_hintblock_loop_callback_data *data,
+	int *result
+) {
+	struct block_find_smallest_hintblock_loop_data *loop_data = (struct block_find_smallest_hintblock_loop_data *) data->argument_ptr;
+	const struct bdl_hintblock_state *state = &data->location->hintblock_state;
+
+	if (state->valid != 1) {
+		*result = BDL_BLOCK_LOOP_BREAK;
+		return 0;
+	}
+
+	if (state->highest_timestamp < loop_data->timestamp_gteq) {
+		*result = BDL_BLOCK_LOOP_OK;
+		return 0;
+	}
+
+	if (state->highest_timestamp < loop_data->smallest_timestamp) {
+		loop_data->smallest_timestamp = state->highest_timestamp;
+		loop_data->smallest_state = *state;
+	}
+
+	return 0;
+}
+
+int block_find_oldest_hintblock (
+	struct bdl_io_file *device,
+	const struct bdl_header *master_header,
+	uint64_t timestamp_gteq,
+	struct bdl_block_location *location,
+	int *result
+) {
+	struct block_find_smallest_hintblock_loop_data loop_data;
+
+	loop_data.timestamp_gteq = timestamp_gteq;
+	memset (&loop_data.smallest_state, '\0', sizeof(loop_data.smallest_state));
+	loop_data.smallest_timestamp = 0xffffffffffffffff;
+
+	struct bdl_hintblock_loop_callback_data callback_data;
+	callback_data.argument_int = 0;
+	callback_data.argument_ptr = (void*) &loop_data;
+
+	if (block_loop_hintblocks_large_device (
+			device, master_header, NULL,
+			block_find_oldest_hintblock_loop_callback, &callback_data,
+			location,
+			result
+	) != 0) {
+		fprintf (stderr, "Error while looping hintblocks while reading blocks\n");
+		return 1;
+	}
+
+	location->hintblock_state = loop_data.smallest_state;
+
+	return 0;
+}

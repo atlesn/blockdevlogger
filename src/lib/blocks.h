@@ -164,6 +164,13 @@ int block_loop_blocks (
 	struct bdl_block_loop_callback_data *callback_data,
 	int *result
 );
+int block_find_oldest_hintblock (
+	struct bdl_io_file *device,
+	const struct bdl_header *master_header,
+	uint64_t timestamp_gteq,
+	struct bdl_block_location *location,
+	int *result
+);
 
 int block_get_validate_master_header(struct bdl_io_file *file, struct bdl_header *header, int *result);
 void block_dump (const struct bdl_block_header *header, unsigned long int position, const char *data);
