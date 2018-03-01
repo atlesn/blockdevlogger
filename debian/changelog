@@ -1,3 +1,9 @@
+block-device-logger (0.2) unstable; urgency=medium
+
+  * Create different return values from write function error conditions
+
+ -- Atle Solbakken <atle@goliathdns.no>  Thu, 01 Mar 2018 18:42:11 +0100
+
 block-device-logger (0.1-1) unstable; urgency=medium
 
   * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>

@@ -6,6 +6,7 @@ Makefile.in
 *.so
 *.lo
 *.lo
+*.la
 .deps
 /config.h
 
@@ -48,10 +49,10 @@ Makefile.in
 /debian/libblock-device-logger.debhelper.log
 /debian/libblock-device-logger.substvars
 /debian/libblock-device-logger/
-/debian/block-device-logger-dev.debhelper.log
-/debian/block-device-logger-dev.substvars
-/debian/block-device-logger-dev/
 /debian/tmp/
+/debian/libblock-device-logger-dev.debhelper.log
+/debian/libblock-device-logger-dev.substvars
+/debian/libblock-device-logger-dev/
 
 
 # https://www.gnu.org/software/libtool/

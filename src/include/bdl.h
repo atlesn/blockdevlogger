@@ -90,13 +90,20 @@ int bdl_read_blocks (
 
 /* ****
  * Write a block and update hint block and backup hint block. Arguments after data_length
- * may be zero.
+ * may be zero. Returns > 0 on error, see defines below.
  * ****/
 int bdl_write_block (
 		struct bdl_session *session,
 		const char *data, unsigned long int data_length,
 		uint64_t appdata, uint64_t timestamp, unsigned long int faketimestamp
 );
+
+#define BDL_WRITE_ERR				1 // Other error (often IO)
+#define BDL_WRITE_ERR_TIMESTAMP		2 // Timestamp was smaller than the newest entry
+#define BDL_WRITE_ERR_SIZE			3 // Size of block was too big
+#define BDL_WRITE_ERR_IO			4 // IO error
+#define BDL_WRITE_ERR_CORRUPT		5 // Corrupt device
+
 
 /* ****
  * Initialize a new device (must be opened first with bdl_start_session). Device must

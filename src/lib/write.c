@@ -296,12 +296,12 @@ int write_put_block (
 	// Read master header
 	if (block_get_validate_master_header(session_file, &header, &result) != 0) {
 		fprintf (stderr, "Could not get header from device while writing new data block\n");
-		return 1;
+		return BDL_WRITE_ERR_IO;
 	}
 
 	if (result != 0) {
 		fprintf (stderr, "Invalid header of device while writing new data block\n");
-		return 1;
+		return BDL_WRITE_ERR_CORRUPT;
 	}
 
 	// Find write location
@@ -332,7 +332,7 @@ int write_put_block (
 		}
 		else if (location.hintblock_state.highest_timestamp - block_header.timestamp > faketimestamp) {
 			fprintf (stderr, "Faketimestamp limit exceeded, check your clock or consider increasing it.\n");
-			return 1;
+			return BDL_WRITE_ERR_TIMESTAMP;
 		}
 		block_header.timestamp = location.hintblock_state.highest_timestamp + 1;
 #ifdef BDL_DBG_WRITE
@@ -347,7 +347,7 @@ int write_put_block (
 		fprintf(stderr, "Length of data was to large to fit inside a block, length was %lu while maximum size is %" PRIu64 "\n",
 			data_length, (header.block_size - sizeof(block_header))
 		);
-		return 1;
+		return BDL_WRITE_ERR_SIZE;
 	}
 
 	// Check for funny write locations
