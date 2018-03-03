@@ -53,8 +53,10 @@ int update_block_loop_callback(struct bdl_block_loop_callback_data *data, int *r
 	);
 
 	if (update_info.do_update == 1) {
+		struct bdl_block_header new_header = *block_header;
+		new_header.application_data = update_info.new_appdata;
 		if (write_checksum_and_put_block(
-			block_header,
+			&new_header,
 			block_header->data_length, data->block_data,
 			data->master_header,
 			data->block_position,
