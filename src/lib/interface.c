@@ -34,6 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "session.h"
 #include "read.h"
 #include "clear.h"
+#include "update.h"
 #include "../include/bdl.h"
 
 int bdl_write_block (
@@ -69,14 +70,15 @@ int bdl_write_block (
 	);
 }
 
-int bdl_update_application_data (
+int bdl_read_update_application_data (
 	struct bdl_session *session,
 	uint64_t timestamp_min,
+	uint64_t application_data_and,
 	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data),
 	void *arg,
 	int *result
 ) {
-	return write_update_application_data (&session->device, timestamp_min, test, arg, result);
+	return update_application_data (&session->device, timestamp_min, application_data_and, test, arg, result);
 }
 
 int bdl_init_dev (

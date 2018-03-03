@@ -23,6 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define BDL_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 /* ****
  * The following structs are usually only used internally
@@ -107,17 +108,19 @@ int bdl_write_block (
 /* ****
  * Update the application data field in blocks. Specify the lowest timestamp to search,
  * and a match function which returns the below defined update struct with a new appdata
- * field and update field set to 1 for update and 0 for don't update. Puts the number
- * of updated fields in *result, and returns 0 for success and > 0 for error.
+ * field and update field set to 1 for update and 0 for don't update. Only entries matching
+ * application_data_and (using &) are returned. Puts the number of updated fields in *result,
+ * and returns 0 for success and > 0 for error.
  * ****/
 struct bdl_update_info {
 	int do_update;
 	uint64_t new_appdata;
 };
 
-int bdl_update_application_data (
+int bdl_read_update_application_data (
 	struct bdl_session *session,
 	uint64_t timestamp_min,
+	uint64_t application_data_and,
 	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data),
 	void *arg,
 	int *result
