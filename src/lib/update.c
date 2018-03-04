@@ -62,13 +62,17 @@ int update_block_loop_callback(struct bdl_block_loop_callback_data *data, int *r
 			data->block_position,
 			data->file
 		) != 0) {
-			return 1;
+			return BDL_BLOCK_LOOP_ERR;
 		}
 
 		loop_data->result_count++;
 	}
 
-	return 0;
+	if (update_info.do_break == 1) {
+		return BDL_BLOCK_LOOP_BREAK;
+	}
+
+	return BDL_BLOCK_LOOP_OK;
 }
 
 int update_hintblock_loop_callback(

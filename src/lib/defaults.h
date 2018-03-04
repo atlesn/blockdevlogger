@@ -23,7 +23,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define BDL_DEFAULTS_H
 
 /* Blocksystem version */
-#define BDL_BLOCKSYSTEM_VERSION 3
+#define BDL_BLOCKSYSTEM_VERSION 4
 
 /* Blocks are allocated on the stack, don't make them too big */
 #define BDL_DEFAULT_BLOCKSIZE 512
@@ -51,8 +51,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * after the previous hint block.
  */
 
-/* Default hint block spacing is 128MB, one is also placed at the very end */
-#define BDL_DEFAULT_HINTBLOCK_SPACING (128 * 1024 * 1024)
+/* Default hint block spacing is 8MB, one is also placed at the very end */
+#define BDL_DEFAULT_HINTBLOCK_SPACING (8 * 1024 * 1024)
 #define BDL_HINTBLOCK_BACKUP_POSITION (-BDL_DEFAULT_HINTBLOCK_SPACING/2)
 
 /* For devices smaller than 256MB, use up to four blocks plus one at the end */

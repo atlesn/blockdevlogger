@@ -114,6 +114,7 @@ int bdl_write_block (
  * ****/
 struct bdl_update_info {
 	int do_update;
+	int do_break;
 	uint64_t new_appdata;
 };
 
