@@ -38,6 +38,8 @@ int update_block_loop_callback(struct bdl_block_loop_callback_data *data, int *r
 	struct update_block_loop_data *loop_data = (struct update_block_loop_data *) data->argument_ptr;
 	const struct bdl_block_header *block_header = data->block;
 
+	*result = BDL_BLOCK_LOOP_OK;
+
 	if (	(block_header->timestamp < loop_data->timestamp_gteq) ||
 			(block_header->application_data & loop_data->application_data_and) == 0
 	) {
@@ -62,17 +64,18 @@ int update_block_loop_callback(struct bdl_block_loop_callback_data *data, int *r
 			data->block_position,
 			data->file
 		) != 0) {
-			return BDL_BLOCK_LOOP_ERR;
+			*result =  BDL_BLOCK_LOOP_ERR;
+			return 1;
 		}
 
 		loop_data->result_count++;
 	}
 
 	if (update_info.do_break == 1) {
-		return BDL_BLOCK_LOOP_BREAK;
+		*result = BDL_BLOCK_LOOP_BREAK;
 	}
 
-	return BDL_BLOCK_LOOP_OK;
+	return 0;
 }
 
 int update_hintblock_loop_callback(
