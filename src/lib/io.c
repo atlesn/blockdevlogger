@@ -88,7 +88,7 @@ int io_close (struct bdl_io_file *file) {
 	return ret;
 }
 
-int io_open(const char *path, struct bdl_io_file *file) {
+int io_open(const char *path, struct bdl_io_file *file, int no_mmap) {
 	char new_path[strlen(path) + 1];
 	sprintf (new_path, "%s", path);
 
@@ -164,12 +164,14 @@ int io_open(const char *path, struct bdl_io_file *file) {
 		file->size = size_tmp;
 	}
 
-	file->memorymap = mmap(NULL, file->size, PROT_READ|PROT_WRITE, MAP_SHARED, fileno(file->file), 0);
-	if (file->memorymap == MAP_FAILED) {
-		fprintf (stderr, "Memory mapping failed, file might be too big: %s\n", strerror(errno));
-		fprintf (stderr, "Fallback to standard IO\n");
-		file->memorymap = NULL;
-		return 0;
+	if (no_mmap == 0) {
+		file->memorymap = mmap(NULL, file->size, PROT_READ|PROT_WRITE, MAP_SHARED, fileno(file->file), 0);
+		if (file->memorymap == MAP_FAILED) {
+			fprintf (stderr, "Memory mapping failed, file might be too big: %s\n", strerror(errno));
+			fprintf (stderr, "Fallback to standard IO\n");
+			file->memorymap = NULL;
+			return 0;
+		}
 	}
 
 

@@ -63,7 +63,7 @@ struct bdl_session {
  * of close commands must be called before the session is actually closed.
  * ****/
 void bdl_init_session (struct bdl_session *session);
-int bdl_start_session (struct bdl_session *session, const char *device_path);
+int bdl_start_session (struct bdl_session *session, const char *device_path, int no_mmap);
 void bdl_close_session (struct bdl_session *session);
 
 /* ****

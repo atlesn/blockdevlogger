@@ -27,7 +27,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "../include/bdl.h"
 
 int io_close (struct bdl_io_file *file);
-int io_open(const char *path, struct bdl_io_file *file);
+int io_open(const char *path, struct bdl_io_file *file, int no_mmap);
 int io_sync(struct bdl_io_file *file);
 int io_write_block(struct bdl_io_file *file, unsigned long int position, const char *data, unsigned long int data_length, const char *padding, unsigned long int padding_length, int verbose);
 int io_read_block(struct bdl_io_file *file, unsigned long int position, char *data, unsigned long int data_length);

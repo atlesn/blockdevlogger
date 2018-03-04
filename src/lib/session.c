@@ -31,7 +31,7 @@ void bdl_init_session (struct bdl_session *session) {
 	session->usercount = 0;
 }
 
-int bdl_start_session (struct bdl_session *session, const char *device_path) {
+int bdl_start_session (struct bdl_session *session, const char *device_path, int no_mmap) {
 	if (session->usercount > 0) {
 		if (device_path != NULL) {
 			fprintf (stderr, "Device argument dev=DEVICE was given while session was already open\n");
@@ -46,7 +46,7 @@ int bdl_start_session (struct bdl_session *session, const char *device_path) {
 		return 1;
 	}
 
-	if (io_open(device_path, &session->device) != 0) {
+	if (io_open(device_path, &session->device, no_mmap) != 0) {
 		fprintf (stderr, "Error while opening %s\n", device_path);
 		return 1;
 	}

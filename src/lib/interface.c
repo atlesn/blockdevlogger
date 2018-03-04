@@ -150,7 +150,7 @@ int bdl_interpret_command (struct bdl_session *session, int argc, const char *ar
 			return 1;
 		}
 
-		if (bdl_start_session(session, device_path) != 0) {
+		if (bdl_start_session(session, device_path, 0) != 0) {
 			fprintf (stderr, "Error while opening device for session use\n");
 			return 1;
 		}
@@ -171,7 +171,7 @@ int bdl_interpret_command (struct bdl_session *session, int argc, const char *ar
 			return 1;
 		}
 
-		if (bdl_start_session (session, device_string) != 0) {
+		if (bdl_start_session (session, device_string, 0) != 0) {
 			fprintf (stderr, "Could not start session for clear command\n");
 			return 1;
 		}
@@ -200,7 +200,7 @@ int bdl_interpret_command (struct bdl_session *session, int argc, const char *ar
 			return 1;
 		}
 
-		if (bdl_start_session (session, device_string) != 0) {
+		if (bdl_start_session (session, device_string, 0) != 0) {
 			fprintf (stderr, "Could not start session for validate command\n");
 			return 1;
 		}
@@ -255,7 +255,7 @@ int bdl_interpret_command (struct bdl_session *session, int argc, const char *ar
 			return 1;
 		}
 
-		if (bdl_start_session (session, device_string) != 0) {
+		if (bdl_start_session (session, device_string, 0) != 0) {
 			fprintf (stderr, "Could not start session for read command\n");
 			return 1;
 		}
@@ -322,7 +322,7 @@ int bdl_interpret_command (struct bdl_session *session, int argc, const char *ar
 			return 1;
 		}
 
-		if (bdl_start_session(session, device_string) != 0) {
+		if (bdl_start_session(session, device_string, 0) != 0) {
 			fprintf (stderr, "Could not start session for write command\n");
 			return 1;
 		}
@@ -399,7 +399,7 @@ int bdl_interpret_command (struct bdl_session *session, int argc, const char *ar
 			return 1;
 		}
 
-		if (bdl_start_session (session, device_string) != 0) {
+		if (bdl_start_session (session, device_string, 0) != 0) {
 			fprintf (stderr, "Error while starting session for init command\n");
 			return 1;
 		}
