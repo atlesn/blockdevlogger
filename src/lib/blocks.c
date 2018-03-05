@@ -34,6 +34,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "validate.h"
 #include "write.h"
 
+//#define BDL_DEBUG_BLOCKS
+
 int block_hintblock_get_last_block (
 		struct bdl_io_file *file,
 		const struct bdl_hintblock_state *state,
@@ -135,7 +137,9 @@ int block_hintblock_recover_backup (
 		return 0;
 	}
 
+#ifdef BDL_DEBUG_BLOCKS
 	printf ("Recovering backup from position %lu to %lu\n", state->backup_location, state->location);
+#endif
 
 	if (write_update_hintblock (
 			file,
@@ -211,7 +215,7 @@ int block_get_hintblock_state (
 	state->valid = 1;
 	state->highest_timestamp = block.timestamp;
 
-#ifdef BDL_DBG_WRITE
+#ifdef BDL_DBG_BLOCKS
 		printf ("Highest timestamp of hint block was %" PRIu64 "\n", state->highest_timestamp);
 #endif
 

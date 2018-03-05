@@ -34,7 +34,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "bdltime.h"
 #include "../include/bdl.h"
 
-#define BDL_DBG_WRITE
+//#define BDL_DBG_WRITE
 
 int write_find_location_small(struct bdl_io_file *file, const struct bdl_header *header, struct bdl_block_location *location) {
 	location->block_location = 0;

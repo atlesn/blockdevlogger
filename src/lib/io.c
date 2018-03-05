@@ -154,7 +154,9 @@ int io_open(const char *path, struct bdl_io_file *file, int no_mmap) {
 
 		size_tmp *= multiplier;
 
+#ifdef BDL_DEBUG_IO
 		printf ("New size: %llu, Old size: %llu\n", size_tmp, file->size);
+#endif
 
 		if (size_tmp > file->size) {
 			fprintf (stderr, "Costum size of file was larger than original size (%llu > %llu)\n", size_tmp, file->size);

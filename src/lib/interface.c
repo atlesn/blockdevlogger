@@ -187,7 +187,7 @@ int bdl_interpret_command (struct bdl_session *session, int argc, const char *ar
 			printf ("Device was cleared\n");
 		}
 		else {
-			printf ("Device was not valid, must be initialized\n");
+			fprintf (stderr, "Device was not valid, must be initialized\n");
 		}
 
 		bdl_close_session(session);
