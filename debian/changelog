@@ -1,3 +1,9 @@
+block-device-logger (0.3) unstable; urgency=medium
+
+  * Create new structure to hold update callback data
+
+ -- Atle Solbakken <atle@goliathdns.no>  Thu, 04 Jul 2019 17:04:24 +0200
+
 block-device-logger (0.2) unstable; urgency=medium
 
   * Create different return values from write function error conditions
