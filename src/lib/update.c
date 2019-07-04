@@ -30,7 +30,8 @@ struct update_block_loop_data {
 	uint64_t timestamp_gteq;
 	uint64_t application_data_and;
 	unsigned long int result_count;
-	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data);
+	struct bdl_update_callback_data *update_data;
+	struct bdl_update_info (*test)(void *arg, struct bdl_update_callback_data *update_data);
 	void *test_arg;
 };
 
@@ -46,12 +47,16 @@ int update_block_loop_callback(struct bdl_block_loop_callback_data *data, int *r
 		return 0;
 	}
 
+	struct bdl_update_callback_data callback_data = {
+			block_header->timestamp,
+			block_header->application_data,
+			block_header->data_length,
+			data->block_data
+	};
+
 	struct bdl_update_info update_info = loop_data->test (
 		loop_data->test_arg,
-		block_header->timestamp,
-		block_header->application_data,
-		block_header->data_length,
-		data->block_data
+		&callback_data
 	);
 
 	if (update_info.do_update == 1) {
@@ -127,7 +132,7 @@ int update_application_data (
 	struct bdl_io_file *session_file,
 	uint64_t timestamp_min,
 	uint64_t application_data_and,
-	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data),
+	struct bdl_update_info (*test)(void *arg, struct bdl_update_callback_data *update_data),
 	void *arg,
 	int *result_final
 ) {

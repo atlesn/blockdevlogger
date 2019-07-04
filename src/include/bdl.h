@@ -118,11 +118,18 @@ struct bdl_update_info {
 	uint64_t new_appdata;
 };
 
+struct bdl_update_callback_data {
+	uint64_t timestamp;
+	uint64_t application_data;
+	uint64_t data_length;
+	const char *data;
+};
+
 int bdl_read_update_application_data (
 	struct bdl_session *session,
 	uint64_t timestamp_min,
 	uint64_t application_data_and,
-	struct bdl_update_info (*test)(void *arg, uint64_t timestamp, uint64_t application_data, uint64_t data_length, const char *data),
+	struct bdl_update_info (*test)(void *arg, struct bdl_update_callback_data *callback_data),
 	void *arg,
 	int *result
 );
